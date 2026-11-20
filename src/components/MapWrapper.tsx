@@ -5,6 +5,7 @@ import React from 'react';
 import { Mountain } from 'lucide-react';
 import { JawirTagData } from './TagModal';
 import type { CoffeeResult, PickCenter, ReportOutcome } from './WorldMap';
+import { useLang } from '@/lib/i18n';
 
 interface FlyToTarget {
   lat: number;
@@ -27,15 +28,20 @@ interface MapWrapperProps {
   onSelectTagForLine: (tag: JawirTagData | null) => void;
 }
 
-const DynamicWorldMap = dynamic(() => import('./WorldMap'), {
-  ssr: false,
-  loading: () => (
+function MapLoading() {
+  const { t } = useLang();
+  return (
     <div className="w-full h-full flex flex-col items-center justify-center bg-[#efe7d8] text-ink gap-2">
       <Mountain className="w-8 h-8 text-terra animate-pulse" />
-      <p className="font-display text-lg font-extrabold">Sabar lur, petane lagi digelar…</p>
-      <p className="text-xs text-ink-soft">Pin-pin sedulur lagi dikumpulke</p>
+      <p className="font-display text-lg font-extrabold">{t('Sabar lur, petane lagi digelar…')}</p>
+      <p className="text-xs text-ink-soft">{t('Pin-pin sedulur lagi dikumpulke')}</p>
     </div>
-  ),
+  );
+}
+
+const DynamicWorldMap = dynamic(() => import('./WorldMap'), {
+  ssr: false,
+  loading: () => <MapLoading />,
 });
 
 export default function MapWrapper(props: MapWrapperProps) {

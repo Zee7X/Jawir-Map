@@ -5,6 +5,7 @@ import { MapPin, Crosshair, Mountain, Shuffle, IdCard, X } from 'lucide-react';
 import { JawirTagData } from './TagModal';
 import type { PickCenter } from './WorldMap';
 import { calculateDistanceFromLawu, detectRegionStatus, REGION_BADGE_MAP } from '@/lib/geo';
+import { useLang } from '@/lib/i18n';
 
 interface RadarInfo {
   nearbyCount: number;
@@ -60,6 +61,7 @@ export default function BottomActionBar({
   coffeeNews,
   onDismissCoffeeNews,
 }: BottomActionBarProps) {
+  const { t } = useLang();
   useEffect(() => {
     if (!isPickingLocation) return;
     const onKey = (e: KeyboardEvent) => {
@@ -76,24 +78,26 @@ export default function BottomActionBar({
     <div className="fixed bottom-6 left-3 right-3 z-[900] pointer-events-none select-none flex flex-col items-center gap-2 pb-[env(safe-area-inset-bottom,0px)]">
       {isPickingLocation && (
         <section
-          aria-label="Milih titik neng peta"
+          aria-label={t('Milih titik neng peta')}
           className="pointer-events-auto w-full max-w-md p-3 rounded-md bg-parchment-card border border-amber-900/20 shadow-[0_6px_20px_-6px_rgba(67,48,30,0.4)]"
         >
           <div aria-live="polite">
             <p className="font-type text-sm font-bold text-ink leading-snug">
               {region && pickCenter ? (
                 <>
-                  <span aria-hidden>{region.icon}</span> {region.label} ·{' '}
-                  {calculateDistanceFromLawu(pickCenter.lat, pickCenter.lng).toLocaleString('id-ID')} km saka Lawu
+                  <span aria-hidden>{region.icon}</span> {t(region.label)} ·{' '}
+                  {t('{km} km saka Lawu', {
+                    km: calculateDistanceFromLawu(pickCenter.lat, pickCenter.lng).toLocaleString('id-ID'),
+                  })}
                 </>
               ) : (
-                'Maca peta…'
+                t('Maca peta…')
               )}
             </p>
             <p className="mt-0.5 text-xs text-ink-soft">
               {pickCenter && tooFar
-                ? 'Zoom-in dhisik, ben ora salah kecamatan.'
-                : 'Titik bakal digeser ±500 m kanggo privasimu.'}
+                ? t('Zoom-in dhisik, ben ora salah kecamatan.')
+                : t('Titik bakal digeser ±500 m kanggo privasimu.')}
             </p>
           </div>
           <div className="mt-3 flex gap-2">
@@ -102,7 +106,7 @@ export default function BottomActionBar({
               onClick={onCancelPickLocation}
               className="h-11 px-4 rounded border border-amber-900/25 bg-white text-sm font-bold text-ink hover:border-amber-900/50 transition"
             >
-              Batal
+              {t('Batal')}
             </button>
             <button
               type="button"
@@ -111,7 +115,7 @@ export default function BottomActionBar({
               className="flex-1 flex items-center justify-center gap-2 h-11 px-4 rounded bg-terra hover:bg-terra-deep text-white text-sm font-bold transition disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <MapPin className="w-4 h-4 shrink-0" />
-              <span>Pasang neng kene</span>
+              <span>{t('Pasang neng kene')}</span>
             </button>
           </div>
         </section>
@@ -124,8 +128,8 @@ export default function BottomActionBar({
         >
           <span className="text-xl" aria-hidden>☕</span>
           <p className="flex-1 text-[13px] leading-snug">
-            <b>{coffeeNews.fresh} sedulur</b> nitip kopi wiwit kowe mampir pungkasan. Saiki total{' '}
-            <b className="font-type">{coffeeNews.total}</b> kopi.
+            <b>{t('{n} sedulur', { n: coffeeNews.fresh })}</b> {t('nitip kopi wiwit kowe mampir pungkasan. Saiki total')}{' '}
+            <b className="font-type">{coffeeNews.total}</b> {t('kopi.')}
           </p>
           <button
             type="button"
@@ -135,12 +139,12 @@ export default function BottomActionBar({
             }}
             className="shrink-0 h-9 px-3 rounded bg-terra hover:bg-terra-deep text-white text-xs font-bold transition"
           >
-            Deleng
+            {t('Deleng')}
           </button>
           <button
             type="button"
             onClick={onDismissCoffeeNews}
-            aria-label="Tutup kabar kopi"
+            aria-label={t('Tutup kabar kopi')}
             className="shrink-0 w-9 h-9 flex items-center justify-center rounded text-parchment/70 hover:text-parchment"
           >
             <X className="w-4 h-4" />
@@ -153,12 +157,13 @@ export default function BottomActionBar({
           <span aria-hidden>📡 </span>
           {radarInfo.nearbyCount > 0 ? (
             <>
-              <b>Radar:</b> ana <b className="text-moss">{radarInfo.nearbyCount} sedulur Jawir</b> neng
-              radius {radarInfo.radiusKm} km! Ayo ngopi bareng.
+              <b>Radar:</b> {t('ana')}{' '}
+              <b className="text-moss">{t('{n} sedulur Jawir', { n: radarInfo.nearbyCount })}</b>{' '}
+              {t('neng radius {km} km! Ayo ngopi bareng.', { km: radarInfo.radiusKm })}
             </>
           ) : (
             <>
-              <b>Radar:</b> sepi nyenyet. Sedulur paling cedhak <b>{radarInfo.nearestNickname}</b>,{' '}
+              <b>Radar:</b> {t('sepi nyenyet. Sedulur paling cedhak')} <b>{radarInfo.nearestNickname}</b>,{' '}
               <span className="font-type">{radarInfo.nearestDistanceKm.toLocaleString('id-ID')} km</span>.
             </>
           )}
@@ -174,11 +179,11 @@ export default function BottomActionBar({
                 className="flex items-center gap-2 h-11 px-4 rounded bg-terra hover:bg-terra-deep text-white text-sm font-bold transition"
               >
                 <IdCard className="w-4 h-4 shrink-0" />
-                <span>Paspor Jawirku</span>
+                <span>{t('Paspor Jawirku')}</span>
               </button>
-              <button onClick={onFlyToMyTag} className={QUIET} title="Menyang titikku">
+              <button onClick={onFlyToMyTag} className={QUIET} title={t('Menyang titikku')}>
                 <Crosshair className="w-4 h-4 text-moss shrink-0" />
-                <span className="leading-none sm:leading-normal">Titikku</span>
+                <span className="leading-none sm:leading-normal">{t('Titikku')}</span>
               </button>
             </>
           ) : (
@@ -187,19 +192,19 @@ export default function BottomActionBar({
               className="flex items-center gap-2 h-11 px-4 rounded bg-terra hover:bg-terra-deep text-white text-sm font-bold transition"
             >
               <MapPin className="w-4 h-4 shrink-0" />
-              <span>Tancepke pin</span>
+              <span>{t('Tancepke pin')}</span>
             </button>
           )}
 
           <span className="w-px h-6 bg-amber-900/15 mx-0.5" aria-hidden />
 
-          <button onClick={onFlyToLawu} className={QUIET} title="Menyang Pucak Lawu">
+          <button onClick={onFlyToLawu} className={QUIET} title={t('Menyang Pucak Lawu')}>
             <Mountain className="w-4 h-4 text-terra shrink-0" />
-            <QuietLabel short="Lawu" full="Titik 0 Lawu" />
+            <QuietLabel short={t('Lawu')} full={t('Titik 0 Lawu')} />
           </button>
-          <button onClick={onShuffle} className={QUIET} title="Mlumpat menyang Jawir sembarang">
+          <button onClick={onShuffle} className={QUIET} title={t('Mlumpat menyang Jawir sembarang')}>
             <Shuffle className="w-4 h-4 text-ink-soft shrink-0" />
-            <span className="leading-none sm:leading-normal">Ngacak</span>
+            <span className="leading-none sm:leading-normal">{t('Ngacak')}</span>
           </button>
         </div>
       )}

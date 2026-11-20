@@ -1,6 +1,7 @@
 import type { JawirTagData } from '@/components/TagModal';
 import { TRAH_MAP, type RegionStatusType, type TrahType } from '@/lib/geo';
 import { nearestCity } from '@/lib/cities';
+import { fillVars, type Translate } from '@/lib/share';
 
 export interface TrahStanding {
   trah: TrahType;
@@ -68,20 +69,25 @@ export function trahRanks(war: TrahStanding[]): number[] {
 }
 
 // One line for the map banner: who leads (ties included), and how far behind the viewer's trah is.
-export function trahWarLine(war: TrahStanding[], mine?: TrahType): string | null {
+// t translates each sentence; the default keeps Javanese and only fills the placeholders.
+export function trahWarLine(war: TrahStanding[], mine?: TrahType, t: Translate = fillVars): string | null {
   const top = war[0]?.count || 0;
   if (top === 0) return null;
-  const leaders = war.filter((w) => w.count === top).map((w) => TRAH_MAP[w.trah].short);
-  const leaderText = leaders.length === 1 ? `${TRAH_MAP[war[0].trah].icon} ${leaders[0]} lagi mimpin` : `${leaders.join(', ')} imbang mimpin`;
-  if (!mine) return `${leaderText}, ${top} bala. Trahmu endi?`;
+  const leaders = war.filter((w) => w.count === top).map((w) => t(TRAH_MAP[w.trah].short));
+  const trahs = leaders.join(', ');
+  if (!mine) {
+    return leaders.length === 1
+      ? t('{icon} {trah} lagi mimpin, {n} bala. Trahmu endi?', { icon: TRAH_MAP[war[0].trah].icon, trah: leaders[0], n: top })
+      : t('{trahs} imbang mimpin, {n} bala. Trahmu endi?', { trahs, n: top });
+  }
 
   const me = war.find((w) => w.trah === mine);
   const myCount = me?.count || 0;
-  const name = TRAH_MAP[mine].short;
+  const name = t(TRAH_MAP[mine].short);
   if (myCount === top) {
-    if (leaders.length > 1) return `⚔️ ${leaders.join(', ')} imbang ${top} bala. Ajak konco ben ${name} menang!`;
+    if (leaders.length > 1) return t('⚔ {trahs} imbang {n} bala. Ajak konco ben {trah} menang!', { trahs, n: top, trah: name });
     const runnerUp = war.find((w) => w.count < top)?.count ?? 0;
-    return `👑 ${name} lagi mimpin, unggul ${top - runnerUp} bala. Jaga, ajak konco!`;
+    return t('👑 {trah} lagi mimpin, unggul {n} bala. Jaga, ajak konco!', { trah: name, n: top - runnerUp });
   }
-  return `⚔️ ${name} kalah ${top - myCount} bala karo ${leaders[0]}. Ayo nancep, ajak konco!`;
+  return t('⚔ {trah} kalah {n} bala karo {leader}. Ayo nancep, ajak konco!', { trah: name, n: top - myCount, leader: leaders[0] });
 }

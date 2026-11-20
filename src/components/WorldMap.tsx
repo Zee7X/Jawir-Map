@@ -29,6 +29,9 @@ import {
 import { JawirTagData } from './TagModal';
 import { pinShareUrl } from '@/lib/share';
 import { readVisa, addVisa, VISA_TOTAL } from '@/lib/visa';
+import { useLang } from '@/lib/i18n';
+
+type TFn = ReturnType<typeof useLang>['t'];
 
 interface FlyToTarget {
   lat: number;
@@ -194,7 +197,7 @@ function MinZoomController() {
   return null;
 }
 
-function createLawuIcon() {
+function createLawuIcon(label: string) {
   return L.divIcon({
     className: 'lawu-div-marker',
     html: `
@@ -203,7 +206,7 @@ function createLawuIcon() {
           <path d="M2 32 L17 8 L22 14 L27 6 L42 32 Z" fill="#9a3412" stroke="#fffdf8" stroke-width="2" stroke-linejoin="round"/>
           <path d="M23.5 11.5 L27 6 L30.5 11.5 L28.5 13 L27 11.5 L25 13.5 Z" fill="#fffdf8"/>
         </svg>
-        <span style="margin-top:2px;background:#fffdf8;border:1px solid #9a3412;color:#7c2d12;font:700 10px/1 var(--font-type),monospace;padding:3px 5px;border-radius:2px;white-space:nowrap;">TITIK 0</span>
+        <span style="margin-top:2px;background:#fffdf8;border:1px solid #9a3412;color:#7c2d12;font:700 10px/1 var(--font-type),monospace;padding:3px 5px;border-radius:2px;white-space:nowrap;">${label}</span>
       </div>
     `,
     iconSize: [44, 52],
@@ -212,10 +215,10 @@ function createLawuIcon() {
   });
 }
 
-function createPinIcon(category: TagCategory, isUserTag: boolean) {
+function createPinIcon(category: TagCategory, isUserTag: boolean, userLabel: string) {
   const cat = CATEGORY_MAP[category] || CATEGORY_MAP.eksis;
   const ring = isUserTag ? '#047857' : cat.pinHex;
-  const label = isUserTag ? 'TITIKKU' : '';
+  const label = isUserTag ? userLabel : '';
 
   return L.divIcon({
     className: 'jawir-div-pin',
@@ -239,7 +242,7 @@ function createPinIcon(category: TagCategory, isUserTag: boolean) {
 }
 
 // Situs Keramat: gold octagon seal with a ribbon below, deliberately unlike the round white people pins and the Lawu mountain.
-function createLegendIcon(npc: NpcPin) {
+function createLegendIcon(npc: NpcPin, label: string) {
   return L.divIcon({
     className: 'legend-div-marker',
     html: `
@@ -251,7 +254,7 @@ function createLegendIcon(npc: NpcPin) {
           </svg>
           <span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:17px;line-height:1;">${npc.glyph}</span>
         </div>
-        <span style="margin-top:3px;background:#b45309;color:#fffdf8;font:700 9px/1 var(--font-type),monospace;letter-spacing:.04em;padding:3px 5px;border-radius:2px;white-space:nowrap;">LEGENDHA</span>
+        <span style="margin-top:3px;background:#b45309;color:#fffdf8;font:700 9px/1 var(--font-type),monospace;letter-spacing:.04em;padding:3px 5px;border-radius:2px;white-space:nowrap;">${label}</span>
       </div>
     `,
     iconSize: [64, 58],
@@ -260,14 +263,14 @@ function createLegendIcon(npc: NpcPin) {
   });
 }
 
-function formatRelativeTime(dateStr: string): string {
+function formatRelativeTime(dateStr: string, t: TFn): string {
   const diffMin = Math.floor((Date.now() - new Date(dateStr).getTime()) / 60000);
-  if (!Number.isFinite(diffMin) || diffMin < 1) return 'lagi wae';
-  if (diffMin < 60) return `${diffMin} menit kepungkur`;
+  if (!Number.isFinite(diffMin) || diffMin < 1) return t('lagi wae');
+  if (diffMin < 60) return t('{n} menit kepungkur', { n: diffMin });
   const diffHour = Math.floor(diffMin / 60);
-  if (diffHour < 24) return `${diffHour} jam kepungkur`;
+  if (diffHour < 24) return t('{n} jam kepungkur', { n: diffHour });
   const diffDay = Math.floor(diffHour / 24);
-  if (diffDay < 30) return `${diffDay} dina kepungkur`;
+  if (diffDay < 30) return t('{n} dina kepungkur', { n: diffDay });
   return new Date(dateStr).toLocaleDateString('id-ID');
 }
 
@@ -279,6 +282,7 @@ function flightPath(tag: JawirTagData): [number, number][][] {
 }
 
 function CoffeeButton({ tag, onAddCoffee }: { tag: JawirTagData; onAddCoffee: WorldMapProps['onAddCoffee'] }) {
+  const { t } = useLang();
   const [puffs, setPuffs] = useState<number[]>([]);
   const [note, setNote] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -292,15 +296,15 @@ function CoffeeButton({ tag, onAddCoffee }: { tag: JawirTagData; onAddCoffee: Wo
       const id = Date.now();
       setPuffs((p) => [...p, id]);
       setTimeout(() => setPuffs((p) => p.filter((x) => x !== id)), 1300);
-      setNote('Kopi wis dikirim, isih kemebul. Matur nuwun, lur.');
+      setNote(t('Kopi wis dikirim, isih kemebul. Matur nuwun, lur.'));
     } else if (result === 'already') {
-      setNote('Kowe wis tau ngirim kopi. Siji wae, ojo boros, lur.');
+      setNote(t('Kowe wis tau ngirim kopi. Siji wae, ojo boros, lur.'));
     } else if (result === 'own') {
-      setNote('Iki titikmu dhewe, lur. Kopine kanggo sedulur liya wae.');
+      setNote(t('Iki titikmu dhewe, lur. Kopine kanggo sedulur liya wae.'));
     } else if (result === 'limited') {
-      setNote('Kopine entek, lur. Ngaso sedhela, mengko jajal maneh.');
+      setNote(t('Kopine entek, lur. Ngaso sedhela, mengko jajal maneh.'));
     } else {
-      setNote('Kopine kesenggol, tumpah. Jajal maneh.');
+      setNote(t('Kopine kesenggol, tumpah. Jajal maneh.'));
     }
   };
 
@@ -324,7 +328,7 @@ function CoffeeButton({ tag, onAddCoffee }: { tag: JawirTagData; onAddCoffee: Wo
             ))
           )}
         </span>
-        <span>Titip kopi</span>
+        <span>{t('Titip kopi')}</span>
         <span className="font-type font-normal text-parchment/80">({tag.coffeeCount || 0})</span>
       </button>
       <p className="text-xs text-ink-soft mt-1.5 min-h-[1rem]" aria-live="polite">
@@ -335,15 +339,16 @@ function CoffeeButton({ tag, onAddCoffee }: { tag: JawirTagData; onAddCoffee: Wo
 }
 
 function ShareButton({ tagId }: { tagId: string }) {
+  const { t } = useLang();
   const [note, setNote] = useState<string | null>(null);
 
   const handleClick = async (e: React.MouseEvent) => {
     e.stopPropagation();
     try {
       await navigator.clipboard.writeText(pinShareUrl(tagId));
-      setNote('Link wis disalin');
+      setNote(t('Link wis disalin'));
     } catch {
-      setNote('Link gagal disalin. Salin saka bar alamat.');
+      setNote(t('Link gagal disalin. Salin saka bar alamat.'));
     }
   };
 
@@ -354,7 +359,7 @@ function ShareButton({ tagId }: { tagId: string }) {
         onClick={handleClick}
         className="min-h-11 -ml-1 px-1 text-sm font-bold text-ink underline underline-offset-4 decoration-ink/40 hover:decoration-ink"
       >
-        Bagikan
+        {t('Bagikan')}
       </button>
       <p className="text-xs text-ink-soft text-right" aria-live="polite">
         {note}
@@ -375,6 +380,7 @@ const reportedKey = (id: string) => `jawir_reported_${id}`;
 
 // "Laporke": pick a reason, send once. Enough reports from different browsers hide the pin until an admin checks it.
 function ReportButton({ tagId, onReport }: { tagId: string; onReport: WorldMapProps['onReportPin'] }) {
+  const { t, tm } = useLang();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<string | null>(null);
@@ -405,7 +411,7 @@ function ReportButton({ tagId, onReport }: { tagId: string; onReport: WorldMapPr
   };
 
   if (done) {
-    return <p className="text-xs text-ink-soft" aria-live="polite">{note ?? 'Kowe wis nglaporke pin iki.'}</p>;
+    return <p className="text-xs text-ink-soft" aria-live="polite">{note ? tm(note) : t('Kowe wis nglaporke pin iki.')}</p>;
   }
 
   return (
@@ -419,11 +425,11 @@ function ReportButton({ tagId, onReport }: { tagId: string; onReport: WorldMapPr
           }}
           className="min-h-11 -mr-1 px-1 text-sm text-ink-soft underline underline-offset-4 decoration-ink/30 hover:text-stamp hover:decoration-stamp"
         >
-          Laporke
+          {t('Laporke')}
         </button>
       ) : (
-        <div className="rounded border border-stamp/30 bg-[#fdf3f2] p-2.5 space-y-2" role="group" aria-label="Laporke pin iki">
-          <p className="text-xs font-bold text-[#7f1d1d]">Apa sing salah karo pin iki?</p>
+        <div className="rounded border border-stamp/30 bg-[#fdf3f2] p-2.5 space-y-2" role="group" aria-label={t('Laporke pin iki')}>
+          <p className="text-xs font-bold text-[#7f1d1d]">{t('Apa sing salah karo pin iki?')}</p>
           <div className="flex flex-wrap gap-1.5">
             {REPORT_REASONS.map((r) => (
               <button
@@ -436,12 +442,12 @@ function ReportButton({ tagId, onReport }: { tagId: string; onReport: WorldMapPr
                 }}
                 className="min-h-9 px-2.5 rounded border border-stamp/30 bg-white text-xs font-bold text-ink hover:border-stamp disabled:opacity-60"
               >
-                {r.label}
+                {t(r.label)}
               </button>
             ))}
           </div>
           <div className="flex items-center justify-between gap-2">
-            <p className="text-xs text-[#7f1d1d]" aria-live="polite">{note}</p>
+            <p className="text-xs text-[#7f1d1d]" aria-live="polite">{note ? tm(note) : null}</p>
             <button
               type="button"
               onClick={(e) => {
@@ -450,7 +456,7 @@ function ReportButton({ tagId, onReport }: { tagId: string; onReport: WorldMapPr
               }}
               className="min-h-9 px-1 text-xs text-ink-soft underline underline-offset-2"
             >
-              Batal
+              {t('Batal')}
             </button>
           </div>
         </div>
@@ -460,6 +466,7 @@ function ReportButton({ tagId, onReport }: { tagId: string; onReport: WorldMapPr
 }
 
 function SowanButton({ npc }: { npc: NpcPin }) {
+  const { t } = useLang();
   const [state, setState] = useState<'idle' | 'stamping' | 'done'>('idle');
   const [count, setCount] = useState(0);
 
@@ -485,19 +492,19 @@ function SowanButton({ npc }: { npc: NpcPin }) {
               onClick={handleClick}
               className="w-full h-11 rounded border border-ink/30 bg-white hover:bg-parchment-deep text-ink text-sm font-bold transition"
             >
-              Sowan
+              {t('Sowan')}
             </button>
             <p className="text-xs text-ink-soft mt-1.5">
-              {npc.unlockHint} · koleksimu {count}/{VISA_TOTAL}
+              {t('{hint} · koleksimu {count}/{total}', { hint: t(npc.unlockHint), count, total: VISA_TOTAL })}
             </p>
           </>
         ) : (
           <div aria-live="polite">
-            <p className="text-sm font-bold text-moss">Wis disowani ✓</p>
+            <p className="text-sm font-bold text-moss">{t('Wis disowani ✓')}</p>
             <p className="text-xs text-ink-soft mt-0.5">
               {count >= VISA_TOTAL
-                ? `Cap visa ${count}/${VISA_TOTAL}. Paspormu wis lengkap, lur!`
-                : `Cap visa ${count}/${VISA_TOTAL}. Golek juru kunci liyane neng peta.`}
+                ? t('Cap visa {count}/{total}. Paspormu wis lengkap, lur!', { count, total: VISA_TOTAL })
+                : t('Cap visa {count}/{total}. Golek juru kunci liyane neng peta.', { count, total: VISA_TOTAL })}
             </p>
           </div>
         )}
@@ -507,12 +514,12 @@ function SowanButton({ npc }: { npc: NpcPin }) {
           className={`relative shrink-0 w-[76px] h-[76px] rounded-full border-[3px] border-stamp text-stamp flex flex-col items-center justify-center text-center rotate-[-14deg] opacity-85 mix-blend-multiply pointer-events-none ${
             state === 'stamping' ? 'stamp-press' : ''
           }`}
-          aria-label={`Cap visa ${npc.title}`}
+          aria-label={t('Cap visa {title}', { title: t(npc.title) })}
         >
           <div className="absolute inset-[4px] rounded-full border border-stamp" />
-          <span className="text-[8px] font-bold leading-tight">CAP VISA</span>
+          <span className="text-[8px] font-bold leading-tight">{t('CAP VISA')}</span>
           <span className="text-[18px] leading-none my-0.5">{npc.glyph}</span>
-          <span className="font-type text-[8px] leading-tight">DISOWANI</span>
+          <span className="font-type text-[8px] leading-tight">{t('DISOWANI')}</span>
         </div>
       )}
     </div>
@@ -520,21 +527,22 @@ function SowanButton({ npc }: { npc: NpcPin }) {
 }
 
 function LegendPopupBody({ npc }: { npc: NpcPin }) {
+  const { t } = useLang();
   return (
     <div className="p-2.5 w-[290px] sm:w-[320px] box-border">
       <div className="border-2 border-dashed border-gold-deep/70 rounded-sm bg-parchment-card p-3 space-y-3">
         <div className="pr-6">
-          <p className="font-type text-xs font-bold text-gold-deep">SITUS LEGENDHA · {npc.glyph}</p>
-          <h4 className="font-display text-lg font-extrabold leading-tight text-ink break-words">{npc.title}</h4>
-          <p className="font-type text-xs text-ink-soft">Juru kunci: {npc.nickname}</p>
+          <p className="font-type text-xs font-bold text-gold-deep">{t('SITUS LEGENDHA · {glyph}', { glyph: npc.glyph })}</p>
+          <h4 className="font-display text-lg font-extrabold leading-tight text-ink break-words">{t(npc.title)}</h4>
+          <p className="font-type text-xs text-ink-soft">{t('Juru kunci: {name}', { name: t(npc.nickname) })}</p>
         </div>
 
         <blockquote className="font-display text-[15px] leading-snug text-ink border-l-2 border-gold-deep/40 pl-3 break-words">
-          {npc.lore}
+          {t(npc.lore)}
         </blockquote>
 
         <div className="flex items-baseline gap-2 text-sm">
-          <span className="text-ink-soft">Adohe saka Lawu</span>
+          <span className="text-ink-soft">{t('Adohe saka Lawu')}</span>
           <span className="leader" aria-hidden />
           <b className="font-type text-terra-deep">{npc.distanceKm.toLocaleString('id-ID')} km</b>
         </div>
@@ -731,6 +739,7 @@ export default function WorldMap({
   selectedTagForLine,
   onSelectTagForLine,
 }: WorldMapProps) {
+  const { t } = useLang();
   const [needleLifted, setNeedleLifted] = useState(false);
   const markerRefs = useRef<Record<string, L.Marker | null>>({});
   const lawuRef = useRef<L.Marker | null>(null);
@@ -784,14 +793,14 @@ export default function WorldMap({
             }}
           >
             <Tooltip permanent direction="center" className="flight-tag">
-              ✈ {selectedTagForLine.distanceKm.toLocaleString('id-ID')} km menyang Lawu
+              {t('✈ {km} km menyang Lawu', { km: selectedTagForLine.distanceKm.toLocaleString('id-ID') })}
             </Tooltip>
           </Polyline>
         )}
 
         <Marker
           position={[LAWU_CENTER.lat, LAWU_CENTER.lng]}
-          icon={createLawuIcon()}
+          icon={createLawuIcon(t('TITIK 0'))}
           zIndexOffset={1000}
           ref={(ref) => {
             lawuRef.current = ref;
@@ -807,18 +816,18 @@ export default function WorldMap({
             <div className="p-4 pr-10 w-[290px] sm:w-[320px] space-y-3 box-border">
               <div>
                 <p className="font-type text-xs text-terra-deep">0 km · {LAWU_CENTER.elevation}</p>
-                <h3 className="font-display text-lg font-extrabold leading-tight text-ink">Pucak Gunung Lawu</h3>
+                <h3 className="font-display text-lg font-extrabold leading-tight text-ink">{t(LAWU_CENTER.name)}</h3>
                 <p className="font-type text-xs text-ink-soft">
                   {LAWU_CENTER.lat}, {LAWU_CENTER.lng}
                 </p>
               </div>
-              <p className="text-[13px] text-ink leading-relaxed">{LAWU_CENTER.lore}</p>
+              <p className="text-[13px] text-ink leading-relaxed">{t(LAWU_CENTER.lore)}</p>
               <button
                 type="button"
                 onClick={onOpenLore}
                 className="w-full h-11 rounded bg-terra hover:bg-terra-deep text-white text-sm font-bold transition"
               >
-                Waosen filosofi Titik 0
+                {t('Waosen filosofi Titik 0')}
               </button>
             </div>
           </Popup>
@@ -836,7 +845,7 @@ export default function WorldMap({
               <Marker
                 key={tag.id}
                 position={[tag.lat, tag.lng]}
-                icon={createPinIcon(tag.category, isUserTag)}
+                icon={createPinIcon(tag.category, isUserTag, t('TITIKKU'))}
                 ref={(ref) => {
                   markerRefs.current[tag.id] = ref;
                 }}
@@ -852,8 +861,8 @@ export default function WorldMap({
                     <div className="pr-8">
                       <p className="font-type text-xs text-ink-soft">
                         {tag.jawirNumber ? `No. ${String(tag.jawirNumber).padStart(4, '0')} · ` : ''}
-                        {formatRelativeTime(tag.createdAt)}
-                        {isUserTag && <b className="text-moss"> · titikmu</b>}
+                        {formatRelativeTime(tag.createdAt, t)}
+                        {isUserTag && <b className="text-moss"> · {t('titikmu')}</b>}
                       </p>
                       <h4 className="font-display text-lg font-extrabold leading-tight text-ink break-words">
                         {tag.nickname}
@@ -861,7 +870,7 @@ export default function WorldMap({
                     </div>
 
                     <ul className="flex flex-wrap gap-1.5 text-xs font-semibold">
-                      {[`${cat.icon} ${cat.label}`, trahInfo && `${trahInfo.icon} ${trahInfo.label}`, `${regBadge.icon} ${regBadge.label}`]
+                      {[`${cat.icon} ${t(cat.label)}`, trahInfo && `${trahInfo.icon} ${t(trahInfo.label)}`, `${regBadge.icon} ${t(regBadge.label)}`]
                         .filter(Boolean)
                         .map((chip) => (
                           <li key={chip as string} className={`px-2 py-0.5 rounded-sm border ${cat.badgeClass}`}>
@@ -875,13 +884,13 @@ export default function WorldMap({
                     </blockquote>
 
                     <div className="flex items-baseline gap-2 text-sm">
-                      <span className="text-ink-soft">Adohe saka Lawu</span>
+                      <span className="text-ink-soft">{t('Adohe saka Lawu')}</span>
                       <span className="leader" aria-hidden />
                       <b className="font-type text-terra-deep">{tag.distanceKm.toLocaleString('id-ID')} km</b>
                     </div>
 
                     {isUserTag ? (
-                      <p className="font-type text-sm text-ink-soft">☕ {tag.coffeeCount || 0} kopi saka sedulur</p>
+                      <p className="font-type text-sm text-ink-soft">{t('☕ {count} kopi saka sedulur', { count: tag.coffeeCount || 0 })}</p>
                     ) : (
                       <CoffeeButton tag={tag} onAddCoffee={onAddCoffee} />
                     )}
@@ -894,28 +903,36 @@ export default function WorldMap({
           })}
         </MarkerClusterGroup>
         {/* Situs Keramat stay outside the cluster group so they never merge into a count */}
-        {NPC_PINS.map((npc) => (
-          <Marker
-            key={npc.id}
-            position={[npc.lat, npc.lng]}
-            icon={createLegendIcon(npc)}
-            zIndexOffset={500}
-            title={`Situs Legendha: ${npc.title}`}
-            ref={(ref) => {
-              markerRefs.current[npc.id] = ref;
-            }}
-            eventHandlers={{
-              click: (e) => {
-                if (e.originalEvent) L.DomEvent.stopPropagation(e.originalEvent);
-                selectPin(npc);
-              },
-            }}
-          >
-            <Popup className="jawir-map-popup" eventHandlers={{ add: () => selectPin(npc), remove: () => clearIfSelected(npc.id) }}>
-              <LegendPopupBody npc={npc} />
-            </Popup>
-          </Marker>
-        ))}
+        {NPC_PINS.map((npc) => {
+          const npcTitle = t('Situs Legendha: {title}', { title: t(npc.title) });
+          return (
+            <Marker
+              key={npc.id}
+              position={[npc.lat, npc.lng]}
+              icon={createLegendIcon(npc, t('LEGENDHA'))}
+              zIndexOffset={500}
+              title={npcTitle}
+              ref={(ref) => {
+                markerRefs.current[npc.id] = ref;
+                // react-leaflet sets `title` only on creation; keep it in step when the language changes.
+                if (ref) {
+                  ref.options.title = npcTitle;
+                  ref.getElement()?.setAttribute('title', npcTitle);
+                }
+              }}
+              eventHandlers={{
+                click: (e) => {
+                  if (e.originalEvent) L.DomEvent.stopPropagation(e.originalEvent);
+                  selectPin(npc);
+                },
+              }}
+            >
+              <Popup className="jawir-map-popup" eventHandlers={{ add: () => selectPin(npc), remove: () => clearIfSelected(npc.id) }}>
+                <LegendPopupBody npc={npc} />
+              </Popup>
+            </Marker>
+          );
+        })}
       </MapContainer>
       {isPickingLocation && <PickNeedle lifted={needleLifted} />}
     </div>

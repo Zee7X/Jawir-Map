@@ -15,6 +15,7 @@ import { getFingerprintId } from '@/lib/fingerprint';
 import { buildLeaderboard, trahWarLine } from '@/lib/leaderboard';
 import { LAWU_CENTER, NPC_PINS, calculateDistanceKm, type NpcPin, type TrahType } from '@/lib/geo';
 import { pinPath } from '@/lib/share';
+import { useLang } from '@/lib/i18n';
 
 const RADAR_KM = 3;
 const MY_TAG_KEY = 'jawir_my_tag';
@@ -94,6 +95,7 @@ async function fetchJson<T>(url: string): Promise<T> {
 
 // initialTagId comes from /p/<id>; the homepage also honours old /?tag=<id> links.
 export default function JawirMapApp({ initialTagId }: { initialTagId?: string }) {
+  const { lang, setLang, t, tm } = useLang();
   const [tags, setTags] = useState<JawirTagData[]>([]);
   const [loadState, setLoadState] = useState<'loading' | 'ok' | 'error'>('loading');
   const [userTag, setUserTag] = useState<JawirTagData | null>(null);
@@ -131,7 +133,7 @@ export default function JawirMapApp({ initialTagId }: { initialTagId?: string })
   const total = tags.length;
   const leaderboard = useMemo(() => buildLeaderboard(tags), [tags]);
   const farthestTag = leaderboard.topFarthest[0] || null;
-  const warLine = useMemo(() => trahWarLine(leaderboard.trahWar, userTag?.trah as TrahType | undefined), [leaderboard, userTag]);
+  const warLine = useMemo(() => trahWarLine(leaderboard.trahWar, userTag?.trah as TrahType | undefined, t), [leaderboard, userTag, t]);
   const advanceTicker = useCallback(() => setTickerIndex((i) => i + 1), []);
   const filterCount = activeFilterCount(filter);
   // The map, shuffle and the search list follow the filter; totals and the leaderboard always count every pin.
@@ -346,9 +348,9 @@ export default function JawirMapApp({ initialTagId }: { initialTagId?: string })
     try {
       const res = await fetch('/api/tags/me', { method: 'DELETE' });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok || !data.success) return data.message || 'Pine gagal dibusak. Jajal maneh, lur.';
+      if (!res.ok || !data.success) return data.message ? tm(data.message) : t('Pine gagal dibusak. Jajal maneh, lur.');
     } catch {
-      return 'Pine gagal dibusak. Jajal maneh, lur.';
+      return t('Pine gagal dibusak. Jajal maneh, lur.');
     }
     const goneId = userTag.id;
     rememberDeleted(goneId);
@@ -376,9 +378,10 @@ export default function JawirMapApp({ initialTagId }: { initialTagId?: string })
         setTags((prev) => prev.filter((t) => t.id !== tagId));
         if (selectedTagForLine?.id === tagId) selectTag(null);
       }
-      return { ok: !!data.success, hidden: !!data.hidden, message: data.message || 'Laporane gagal dikirim. Jajal maneh.' };
+      const message = data.message ? tm(data.message) : t('Laporane gagal dikirim. Jajal maneh.');
+      return { ok: !!data.success, hidden: !!data.hidden, message };
     } catch {
-      return { ok: false, hidden: false, message: 'Laporane gagal dikirim. Jajal maneh.' };
+      return { ok: false, hidden: false, message: t('Laporane gagal dikirim. Jajal maneh.') };
     }
   };
 
@@ -430,30 +433,31 @@ export default function JawirMapApp({ initialTagId }: { initialTagId?: string })
       {loadState === 'error' && (
         <div
           role="alert"
-          className="fixed top-[72px] left-3 right-3 z-[900] mx-auto max-w-md flex items-center gap-3 px-3.5 py-2.5 rounded-md bg-[#fdecea] border border-stamp/40 text-sm text-[#7f1d1d] shadow-[0_2px_10px_-3px_rgba(67,48,30,0.3)]"
+          className="fixed top-[72px] left-3 right-[68px] sm:right-3 z-[900] mx-auto max-w-md flex items-center gap-3 px-3.5 py-2.5 rounded-md bg-[#fdecea] border border-stamp/40 text-sm text-[#7f1d1d] shadow-[0_2px_10px_-3px_rgba(67,48,30,0.3)]"
         >
-          <span className="flex-1">Pin-pin sedulur gagal diundhuh. Sinyalmu utawa servere lagi ngadat.</span>
+          <span className="flex-1">{t('Pin-pin sedulur gagal diundhuh. Sinyalmu utawa servere lagi ngadat.')}</span>
           <button
             type="button"
             onClick={() => loadPins()}
             className="shrink-0 h-9 px-3 rounded bg-stamp hover:bg-[#991b1b] text-white font-bold transition"
           >
-            Jajal maneh
+            {t('Jajal maneh')}
           </button>
         </div>
       )}
 
       {loadState === 'ok' && !isPickingLocation && !selectedTagForLine && filterCount > 0 && (
-        <div className="fixed top-[72px] left-3 z-[890] max-w-[calc(100%-24px)] sm:max-w-md flex items-center gap-2 pl-3 pr-1.5 py-1.5 rounded-md bg-ink text-parchment text-[13px] shadow-[0_2px_10px_-3px_rgba(67,48,30,0.4)] select-none">
+        <div className="fixed top-[72px] left-3 z-[890] max-w-[calc(100%-80px)] sm:max-w-md flex items-center gap-2 pl-3 pr-1.5 py-1.5 rounded-md bg-ink text-parchment text-[13px] shadow-[0_2px_10px_-3px_rgba(67,48,30,0.4)] select-none">
           <button type="button" onClick={() => setIsFilterOpen(true)} className="flex-1 text-left py-0.5">
-            🔎 Nyaring: <b className="font-type">{visibleTags.length}</b> saka <b className="font-type">{tags.length}</b> pin
+            {t('🔎 Nyaring:')} <b className="font-type">{visibleTags.length}</b> {t('saka')}{' '}
+            <b className="font-type">{tags.length}</b> {t('pin')}
           </button>
           <button
             type="button"
             onClick={() => setFilter(EMPTY_FILTER)}
             className="shrink-0 h-8 px-2.5 rounded bg-parchment/15 hover:bg-parchment/25 text-xs font-bold"
           >
-            Reset
+            {t('Reset')}
           </button>
         </div>
       )}
@@ -463,16 +467,38 @@ export default function JawirMapApp({ initialTagId }: { initialTagId?: string })
           index={tickerIndex}
           onAdvance={advanceTicker}
           items={[
-            !!warLine && { key: 'war', label: 'Perang Trah', text: warLine as string, action: 'Klasemen', onClick: () => setIsLeaderboardOpen(true) },
+            !!warLine && {
+              key: 'war',
+              label: t('Perang Trah'),
+              text: warLine as string,
+              action: t('Klasemen'),
+              onClick: () => setIsLeaderboardOpen(true),
+            },
             !isWide && farthestTag && {
               key: 'record',
-              label: 'Rekor paling adoh',
-              text: `${farthestTag.nickname}, ${farthestTag.distanceKm.toLocaleString('id-ID')} km saka Lawu.`,
-              action: 'Mabur',
+              label: t('Rekor paling adoh'),
+              text: t('{name}, {km} km saka Lawu.', {
+                name: farthestTag.nickname,
+                km: farthestTag.distanceKm.toLocaleString('id-ID'),
+              }),
+              action: t('Mabur'),
               onClick: () => handleFlyToFarthest(farthestTag),
             },
           ]}
         />
+      )}
+
+      {/* Language switch: shows the language it switches to */}
+      {!isPickingLocation && (
+        <button
+          type="button"
+          onClick={() => setLang(lang === 'jv' ? 'id' : 'jv')}
+          title={lang === 'jv' ? 'Ganti menyang Basa Indonesia' : 'Ganti ke Bahasa Jawa'}
+          aria-label={lang === 'jv' ? 'Ganti menyang Basa Indonesia' : 'Ganti ke Bahasa Jawa'}
+          className="fixed top-[72px] right-3 z-[890] h-11 min-w-11 px-2 rounded-md bg-parchment-card border border-amber-900/20 font-type font-bold text-sm text-ink hover:bg-parchment-deep shadow-[0_2px_10px_-3px_rgba(67,48,30,0.3)] transition select-none"
+        >
+          {lang === 'jv' ? 'ID' : 'JV'}
+        </button>
       )}
 
       {/* Main Interactive Map */}
@@ -600,7 +626,7 @@ function NewsTicker({ items, index, onAdvance }: { items: (TickerItem | null | f
       type="button"
       onClick={item.onClick}
       aria-live="polite"
-      className="fixed top-[72px] left-3 z-[890] max-w-[calc(100%-24px)] sm:max-w-md flex items-center gap-2 pl-3 pr-2.5 py-2 rounded-md bg-parchment-card border border-dashed border-terra/50 text-left text-[13px] leading-snug text-ink shadow-[0_2px_10px_-3px_rgba(67,48,30,0.3)] hover:border-terra transition select-none"
+      className="fixed top-[72px] left-3 z-[890] max-w-[calc(100%-80px)] sm:max-w-md flex items-center gap-2 pl-3 pr-2.5 py-2 rounded-md bg-parchment-card border border-dashed border-terra/50 text-left text-[13px] leading-snug text-ink shadow-[0_2px_10px_-3px_rgba(67,48,30,0.3)] hover:border-terra transition select-none"
     >
       <span key={item.key} className="flex-1 animate-[ticker-in_300ms_ease-out] motion-reduce:animate-none">
         <b className="text-terra-deep">{item.label}:</b> {item.text}

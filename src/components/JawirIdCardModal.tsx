@@ -10,6 +10,7 @@ import TrahPortrait from './TrahPortrait';
 import { REGION_BADGE_MAP, TRAH_MAP, NPC_PINS, RegionStatusType, TrahType, type NpcPin } from '@/lib/geo';
 import { pinShareUrl, challengeText } from '@/lib/share';
 import { readVisa, VISA_TOTAL } from '@/lib/visa';
+import { useLang } from '@/lib/i18n';
 
 interface JawirIdCardModalProps {
   isOpen: boolean;
@@ -25,32 +26,38 @@ interface JawirIdCardModalProps {
 
 // Kaca Visa: one slot per Situs Legendha, stamped once it has been sowan-ed from this browser.
 function VisaPage({ onVisitNpc }: { onVisitNpc?: (npc: NpcPin) => void }) {
+  const { t } = useLang();
   const [visa, setVisa] = useState<string[]>([]);
   useEffect(() => setVisa(readVisa()), []);
   const done = visa.length >= VISA_TOTAL;
 
   return (
-    <section aria-label="Kaca visa" className="rounded-md border border-dashed border-[#78350f]/40 bg-[#fbf3e2] p-3">
+    <section aria-label={t('Kaca visa')} className="rounded-md border border-dashed border-[#78350f]/40 bg-[#fbf3e2] p-3">
       <div className="flex items-baseline justify-between gap-2">
-        <h3 className="font-display text-base font-extrabold text-ink">Kaca Visa</h3>
+        <h3 className="font-display text-base font-extrabold text-ink">{t('Kaca Visa')}</h3>
         <span className={`font-type text-sm font-bold ${done ? 'text-moss' : 'text-terra-deep'}`}>
-          Cap visa {visa.length}/{VISA_TOTAL}
+          {t('Cap visa {n}/{total}', { n: visa.length, total: VISA_TOTAL })}
         </span>
       </div>
       <p className="text-xs text-ink-soft mt-0.5">
-        {done ? 'Kabeh juru kunci wis disowani. Paspormu lengkap, lur!' : 'Sowan menyang Situs Legendha neng peta kanggo ngumpulke cap.'}
+        {done
+          ? t('Kabeh juru kunci wis disowani. Paspormu lengkap, lur!')
+          : t('Sowan menyang Situs Legendha neng peta kanggo ngumpulke cap.')}
       </p>
       <ul className="mt-2.5 grid grid-cols-4 gap-2">
         {NPC_PINS.map((npc) => {
           const stamped = visa.includes(npc.id);
+          const status = stamped
+            ? t('{title}: wis disowani', { title: t(npc.title) })
+            : t('{title}: durung disowani, tutul kanggo mabur mrana', { title: t(npc.title) });
           return (
             <li key={npc.id}>
               <button
                 type="button"
                 onClick={() => !stamped && onVisitNpc?.(npc)}
                 disabled={stamped || !onVisitNpc}
-                aria-label={stamped ? `${npc.title}: wis disowani` : `${npc.title}: durung disowani, tutul kanggo mabur mrana`}
-                title={stamped ? `${npc.title}: wis disowani` : `${npc.title}: durung disowani, tutul kanggo mabur mrana`}
+                aria-label={status}
+                title={status}
                 className={`w-full aspect-square rounded-full flex flex-col items-center justify-center text-center transition ${
                   stamped
                     ? 'border-[3px] border-stamp text-stamp rotate-[-12deg] opacity-85 mix-blend-multiply'
@@ -60,7 +67,7 @@ function VisaPage({ onVisitNpc }: { onVisitNpc?: (npc: NpcPin) => void }) {
                 <span className={`text-xl leading-none ${stamped ? '' : 'grayscale opacity-40'}`} aria-hidden>
                   {npc.glyph}
                 </span>
-                <span className="font-type text-[8px] font-bold leading-tight mt-0.5">{stamped ? 'DISOWANI' : 'DURUNG'}</span>
+                <span className="font-type text-[8px] font-bold leading-tight mt-0.5">{stamped ? t('DISOWANI') : t('DURUNG')}</span>
               </button>
             </li>
           );
@@ -71,6 +78,7 @@ function VisaPage({ onVisitNpc }: { onVisitNpc?: (npc: NpcPin) => void }) {
 }
 
 function DeletePin({ onDelete }: { onDelete: () => Promise<string | null> }) {
+  const { t, tm } = useLang();
   const [step, setStep] = useState<'idle' | 'confirm' | 'busy'>('idle');
   const [error, setError] = useState<string | null>(null);
 
@@ -91,19 +99,19 @@ function DeletePin({ onDelete }: { onDelete: () => Promise<string | null> }) {
         onClick={() => setStep('confirm')}
         className="min-h-11 -ml-1 px-1 text-sm text-ink-soft underline underline-offset-4 decoration-ink/30 hover:text-stamp hover:decoration-stamp"
       >
-        Busak pinku
+        {t('Busak pinku')}
       </button>
     );
   }
 
   return (
-    <div className="rounded border border-stamp/40 bg-[#fdecea] p-3 space-y-2.5" role="group" aria-label="Busak pin">
+    <div className="rounded border border-stamp/40 bg-[#fdecea] p-3 space-y-2.5" role="group" aria-label={t('Busak pin')}>
       <p className="text-sm text-[#7f1d1d]">
-        Pin, paspor, lan kabeh kopi sing wis mlebu bakal ilang salawase. Nomer Jawirmu ora iso dibalekake.
+        {t('Pin, paspor, lan kabeh kopi sing wis mlebu bakal ilang salawase. Nomer Jawirmu ora iso dibalekake.')}
       </p>
       {error && (
         <p className="text-sm font-bold text-[#7f1d1d]" role="alert">
-          {error}
+          {tm(error)}
         </p>
       )}
       <div className="flex gap-2">
@@ -116,7 +124,7 @@ function DeletePin({ onDelete }: { onDelete: () => Promise<string | null> }) {
           disabled={step === 'busy'}
           className="h-11 px-4 rounded border border-amber-900/25 bg-white text-sm font-bold text-ink hover:border-amber-900/50 transition disabled:opacity-60"
         >
-          Ora sida
+          {t('Ora sida')}
         </button>
         <button
           type="button"
@@ -124,7 +132,7 @@ function DeletePin({ onDelete }: { onDelete: () => Promise<string | null> }) {
           disabled={step === 'busy'}
           className="flex-1 h-11 px-4 rounded bg-stamp hover:bg-[#991b1b] text-white text-sm font-bold transition disabled:opacity-60"
         >
-          {step === 'busy' ? 'Lagi mbusak…' : 'Iya, busak pinku'}
+          {step === 'busy' ? t('Lagi mbusak…') : t('Iya, busak pinku')}
         </button>
       </div>
     </div>
@@ -179,6 +187,7 @@ function Field({ label, children, className = '' }: { label: string; children: R
 }
 
 export default function JawirIdCardModal({ isOpen, onClose, tag, isNewCreation = false, note, onDelete, onVisitNpc }: JawirIdCardModalProps) {
+  const { t, tm } = useLang();
   const cardRef = useRef<HTMLDivElement>(null);
   const [isDownloading, setIsDownloading] = useState(false);
   const [downloadError, setDownloadError] = useState(false);
@@ -188,7 +197,7 @@ export default function JawirIdCardModal({ isOpen, onClose, tag, isNewCreation =
     if (!isOpen || !isNewCreation) return;
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     // Fire as the stamp lands, in the card's own ink colors.
-    const t = setTimeout(() => {
+    const timer = setTimeout(() => {
       confetti({
         particleCount: 110,
         spread: 75,
@@ -199,7 +208,7 @@ export default function JawirIdCardModal({ isOpen, onClose, tag, isNewCreation =
         disableForReducedMotion: true,
       });
     }, 650);
-    return () => clearTimeout(t);
+    return () => clearTimeout(timer);
   }, [isOpen, isNewCreation]);
 
   if (!isOpen || !tag) return null;
@@ -230,7 +239,7 @@ export default function JawirIdCardModal({ isOpen, onClose, tag, isNewCreation =
 
   const handleShare = async () => {
     const shareUrl = pinShareUrl(tag.id);
-    const dare = challengeText(tag, trahInfo.short);
+    const dare = challengeText(tag, trahInfo.short, t);
     const text = `${dare} ${shareUrl}`;
     if (navigator.share) {
       try {
@@ -252,8 +261,8 @@ export default function JawirIdCardModal({ isOpen, onClose, tag, isNewCreation =
 
   return (
     <Dossier
-      title={isNewCreation ? 'Paspor Panjenengan sampun medal' : 'Paspor Jawirku'}
-      subtitle="Simpen kertune, pamerke neng Story. Ben kanca-kancamu iri."
+      title={isNewCreation ? t('Paspor Panjenengan sampun medal') : t('Paspor Jawirku')}
+      subtitle={t('Simpen kertune, pamerke neng Story. Ben kanca-kancamu iri.')}
       onClose={onClose}
       maxWidth="sm:max-w-[460px]"
     >
@@ -265,8 +274,8 @@ export default function JawirIdCardModal({ isOpen, onClose, tag, isNewCreation =
 
             <header className="relative flex items-end justify-between gap-2 px-3.5 pt-3 pb-2 bg-terra-deep text-[#fbf3e2]">
               <div className="leading-none">
-                <p className="text-[10px] tracking-wide">Paguyuban Jawir Sedonya</p>
-                <p className="font-display text-[19px] font-extrabold mt-1">Paspor Diplomatik</p>
+                <p className="text-[10px] tracking-wide">{t('Paguyuban Jawir Sedonya')}</p>
+                <p className="font-display text-[19px] font-extrabold mt-1">{t('Paspor Diplomatik')}</p>
               </div>
               <p className="font-type text-[11px] text-right leading-tight">
                 P · JWR
@@ -279,24 +288,24 @@ export default function JawirIdCardModal({ isOpen, onClose, tag, isNewCreation =
             <div className="relative flex gap-3 px-3.5 pt-3">
               <figure className="shrink-0 w-[84px]">
                 <div className="h-[106px] rounded-sm border border-[#78350f]/50 bg-[#efe2c6] overflow-hidden">
-                  <TrahPortrait trah={tag.trah as TrahType} label={`Pas foto ${trahInfo.label}`} />
+                  <TrahPortrait trah={tag.trah as TrahType} label={t('Pas foto {trah}', { trah: t(trahInfo.label) })} />
                 </div>
                 <figcaption className="text-[10px] text-center text-[#78350f] mt-1 leading-tight">
-                  {trahInfo.label}
+                  {t(trahInfo.label)}
                 </figcaption>
               </figure>
 
               <dl className="flex-1 min-w-0 grid grid-cols-2 gap-x-3 gap-y-2 content-start">
-                <Field label="Asma samaran" className="col-span-2">
+                <Field label={t('Asma samaran')} className="col-span-2">
                   <span className="font-display text-[17px] font-extrabold leading-tight">{tag.nickname}</span>
                 </Field>
-                <Field label="Kasta tlatah" className="col-span-2">
-                  {regBadge.icon} {regBadge.label}
+                <Field label={t('Kasta tlatah')} className="col-span-2">
+                  {regBadge.icon} {t(regBadge.label)}
                 </Field>
-                <Field label="Tebihipun saking Titik 0">{tag.distanceKm.toLocaleString('id-ID')} km</Field>
-                <Field label="Tanggal medal">{issued}</Field>
-                <Field label="Lumampah ngantos">Salaminipun gesang</Field>
-                <Field label="Bangsa">Jawir</Field>
+                <Field label={t('Tebihipun saking Titik 0')}>{tag.distanceKm.toLocaleString('id-ID')} km</Field>
+                <Field label={t('Tanggal medal')}>{issued}</Field>
+                <Field label={t('Lumampah ngantos')}>{t('Salaminipun gesang')}</Field>
+                <Field label={t('Bangsa')}>{t('Jawir')}</Field>
               </dl>
             </div>
 
@@ -308,12 +317,12 @@ export default function JawirIdCardModal({ isOpen, onClose, tag, isNewCreation =
               className={`absolute z-10 right-2.5 -bottom-1 w-[104px] h-[104px] rounded-full border-[3px] border-stamp text-stamp flex flex-col items-center justify-center text-center rotate-[-14deg] opacity-85 mix-blend-multiply pointer-events-none ${
                 isNewCreation ? 'stamp-press' : ''
               }`}
-              aria-label="Cap: kasahaken dening Juru Kunci Gunung Lawu"
+              aria-label={t('Cap: kasahaken dening Juru Kunci Gunung Lawu')}
             >
               <div className="absolute inset-[5px] rounded-full border border-stamp" />
-              <span className="text-[8px] font-bold leading-tight">KASAHAKEN DENING</span>
-              <span className="font-display text-[14px] font-extrabold leading-none my-0.5">JURU KUNCI</span>
-              <span className="text-[8px] font-bold leading-tight">GUNUNG LAWU</span>
+              <span className="text-[8px] font-bold leading-tight">{t('KASAHAKEN DENING')}</span>
+              <span className="font-display text-[14px] font-extrabold leading-none my-0.5">{t('JURU KUNCI')}</span>
+              <span className="text-[8px] font-bold leading-tight">{t('GUNUNG LAWU')}</span>
               <span className="font-type text-[9px] mt-1">3.265 mdpl</span>
             </div>
 
@@ -321,7 +330,7 @@ export default function JawirIdCardModal({ isOpen, onClose, tag, isNewCreation =
 
             <footer
               className="relative mt-3 px-3.5 py-1.5 bg-[#f3e6cb] border-t border-[#78350f]/40 overflow-hidden"
-              aria-label="Kode MRZ paspor"
+              aria-label={t('Kode MRZ paspor')}
             >
               <svg
                 className="absolute inset-0 w-full h-full"
@@ -371,14 +380,16 @@ export default function JawirIdCardModal({ isOpen, onClose, tag, isNewCreation =
 
         <p className="flex items-baseline gap-2 text-sm">
           <span aria-hidden>☕</span>
-          <span className="text-ink-soft">Kopi saka sedulur</span>
+          <span className="text-ink-soft">{t('Kopi saka sedulur')}</span>
           <span className="leader" aria-hidden />
           <b className="font-type text-terra-deep">{tag.coffeeCount || 0}</b>
         </p>
 
         {tag.hidden && (
           <p role="status" className="rounded border border-stamp/40 bg-[#fdecea] px-3 py-2.5 text-sm text-[#7f1d1d]">
-            Pinmu lagi didhelikake saka peta amarga dilaporke sawetara sedulur. Admin bakal mriksa. Yen ana sing salah, busak terus pasang maneh.
+            {t(
+              'Pinmu lagi didhelikake saka peta amarga dilaporke sawetara sedulur. Admin bakal mriksa. Yen ana sing salah, busak terus pasang maneh.'
+            )}
           </p>
         )}
 
@@ -386,13 +397,13 @@ export default function JawirIdCardModal({ isOpen, onClose, tag, isNewCreation =
 
         {note && (
           <p className="text-sm text-ink" role="status">
-            {note}
+            {tm(note)}
           </p>
         )}
 
         {downloadError && (
           <p className="text-sm text-stamp" role="alert">
-            Waduh, gambare gagal dicithak. Jajal maneh, utawa screenshot wae, lur.
+            {t('Waduh, gambare gagal dicithak. Jajal maneh, utawa screenshot wae, lur.')}
           </p>
         )}
 
@@ -403,14 +414,14 @@ export default function JawirIdCardModal({ isOpen, onClose, tag, isNewCreation =
             className="flex-1 flex items-center justify-center gap-2 h-12 px-4 rounded bg-terra hover:bg-terra-deep text-white text-sm font-bold transition disabled:opacity-60"
           >
             <Download className="w-4 h-4 shrink-0" />
-            <span>{isDownloading ? 'Lagi nyithak paspor…' : 'Simpen PNG kanggo Story'}</span>
+            <span>{isDownloading ? t('Lagi nyithak paspor…') : t('Simpen PNG kanggo Story')}</span>
           </button>
           <button
             onClick={handleShare}
             className="flex items-center justify-center gap-2 h-12 px-4 rounded border border-amber-900/25 text-ink text-sm font-bold hover:bg-parchment-deep transition"
           >
             {isCopied ? <Check className="w-4 h-4 text-moss" /> : <Share2 className="w-4 h-4 text-ink-soft" />}
-            <span>{isCopied ? 'Wis disalin' : 'Kirimke'}</span>
+            <span>{isCopied ? t('Wis disalin') : t('Kirimke')}</span>
           </button>
         </div>
 
