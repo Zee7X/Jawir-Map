@@ -1,0 +1,37 @@
+name: CI
+
+# Lint, type check, word-filter cases and a production build on every push to main and every PR.
+# GitGotchi reads this workflow's results on main for the repo pet's HP, so keep it on main pushes.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Least privilege: the job only reads the code.
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Lint
+        run: npm run lint
+      - name: Type check
+        run: npm run typecheck
+      - name: Word filter cases
+        run: npm test
+      # No DATABASE_URL here: the build uses the in-memory demo store and needs no secrets.
+      - name: Build
+        run: npm run build
