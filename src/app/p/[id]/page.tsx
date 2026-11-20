@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import JawirMapApp from '@/components/JawirMapApp';
+import { LangProvider } from '@/lib/i18n';
 import { findShareableTag } from '@/lib/tagStore';
 import { pinPath, challengeText } from '@/lib/share';
 import { TRAH_MAP, type TrahType } from '@/lib/geo';
@@ -44,5 +45,9 @@ export async function generateMetadata({ params }: PinPageProps): Promise<Metada
 }
 
 export default function PinPage({ params }: PinPageProps) {
-  return <JawirMapApp initialTagId={decodeURIComponent(params.id)} />;
+  return (
+    <LangProvider>
+      <JawirMapApp initialTagId={decodeURIComponent(params.id)} />
+    </LangProvider>
+  );
 }
