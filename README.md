@@ -36,7 +36,7 @@ Tanpa `DATABASE_URL`, API memakai data demo di memori yang hilang setiap restart
 | `HASH_SALT` | Ya | String acak panjang untuk hash perangkat dan IP. Jangan diganti setelah launch. |
 | `NEXT_PUBLIC_SITE_URL` | Tidak | Default `https://jawirmap.lumelo.my.id`. Dipakai untuk canonical dan preview link. |
 | `MAX_PINS_PER_IP_PER_DAY` | Tidak | Default `10`. |
-| `MAX_COFFEE_PER_IP_PER_HOUR` | Tidak | Default `60`. |
+| `MAX_COFFEE_PER_IP_PER_HOUR` | Tidak | Default `150`. |
 
 Membuat `HASH_SALT`: `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`
 

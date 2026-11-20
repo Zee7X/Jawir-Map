@@ -6,7 +6,9 @@ import { memoryStore, memoryCoffeeVotes, type JawirTagItem, type PublicTag } fro
 
 // Server-side reads shared by the API routes, the share metadata and the OG image.
 
-export function rowToPublic(r: typeof jawirTags.$inferSelect): PublicTag {
+type PublicRow = Omit<typeof jawirTags.$inferSelect, 'deviceHash' | 'ipHash' | 'ownerHash'>;
+
+export function rowToPublic(r: PublicRow): PublicTag {
   return {
     id: r.id,
     jawirNumber: Number(r.jawirNumber),
@@ -29,10 +31,26 @@ export function memoryToPublic(item: JawirTagItem): PublicTag {
   return { ...rest };
 }
 
+// Only columns from the first release, so the map and share previews keep working even if a later migration failed.
+export const PUBLIC_COLUMNS = {
+  id: jawirTags.id,
+  jawirNumber: jawirTags.jawirNumber,
+  nickname: jawirTags.nickname,
+  statusTag: jawirTags.statusTag,
+  category: jawirTags.category,
+  trah: jawirTags.trah,
+  regionStatus: jawirTags.regionStatus,
+  lat: jawirTags.lat,
+  lng: jawirTags.lng,
+  distanceKm: jawirTags.distanceKm,
+  coffeeCount: jawirTags.coffeeCount,
+  createdAt: jawirTags.createdAt,
+};
+
 export async function listPublicTags(): Promise<PublicTag[]> {
   if (isDbConfigured && db) {
     await ensureTable();
-    const rows = await db.select().from(jawirTags).orderBy(desc(jawirTags.createdAt));
+    const rows = await db.select(PUBLIC_COLUMNS).from(jawirTags).orderBy(desc(jawirTags.createdAt));
     return rows.map(rowToPublic);
   }
   return memoryStore.map(memoryToPublic);
@@ -41,7 +59,7 @@ export async function listPublicTags(): Promise<PublicTag[]> {
 export async function findPublicTag(id: string): Promise<PublicTag | null> {
   if (isDbConfigured && db) {
     await ensureTable();
-    const [row] = await db.select().from(jawirTags).where(eq(jawirTags.id, id)).limit(1);
+    const [row] = await db.select(PUBLIC_COLUMNS).from(jawirTags).where(eq(jawirTags.id, id)).limit(1);
     return row ? rowToPublic(row) : null;
   }
   const item = memoryStore.find((t) => t.id === id);
@@ -60,7 +78,7 @@ export async function findShareableTag(id: string): Promise<PublicTag | null> {
 export async function findTagByOwner(ownerHash: string): Promise<PublicTag | null> {
   if (isDbConfigured && db) {
     await ensureTable();
-    const [row] = await db.select().from(jawirTags).where(eq(jawirTags.ownerHash, ownerHash)).limit(1);
+    const [row] = await db.select(PUBLIC_COLUMNS).from(jawirTags).where(eq(jawirTags.ownerHash, ownerHash)).limit(1);
     return row ? rowToPublic(row) : null;
   }
   const item = memoryStore.find((t) => t.ownerHash === ownerHash);

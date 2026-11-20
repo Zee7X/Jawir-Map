@@ -42,6 +42,29 @@ function writeSavedTag(tag: JawirTagData | null) {
   }
 }
 
+// The CDN keeps serving a deleted pin for up to ~75 s (s-maxage 15 + swr 60); hide it on this device meanwhile.
+const DELETED_KEY = 'jawir_deleted';
+const DELETED_HIDE_MS = 2 * 60 * 1000;
+
+function recentlyDeletedIds(): Set<string> {
+  try {
+    const entries = JSON.parse(sessionStorage.getItem(DELETED_KEY) || '{}') as Record<string, number>;
+    return new Set(Object.keys(entries).filter((id) => Date.now() - entries[id] < DELETED_HIDE_MS));
+  } catch {
+    return new Set();
+  }
+}
+
+function rememberDeleted(id: string) {
+  try {
+    const entries = JSON.parse(sessionStorage.getItem(DELETED_KEY) || '{}') as Record<string, number>;
+    entries[id] = Date.now();
+    sessionStorage.setItem(DELETED_KEY, JSON.stringify(entries));
+  } catch {
+    // storage blocked: the pin may briefly reappear after a reload
+  }
+}
+
 async function fetchJson<T>(url: string): Promise<T> {
   const res = await fetch(url);
   const data = await res.json();
@@ -53,6 +76,8 @@ export default function JawirMapApp() {
   const [tags, setTags] = useState<JawirTagData[]>([]);
   const [loadState, setLoadState] = useState<'loading' | 'ok' | 'error'>('loading');
   const [userTag, setUserTag] = useState<JawirTagData | null>(null);
+  // True only when this browser holds the pin's owner cookie; legacy pins known from localStorage cannot be deleted.
+  const [ownsByCookie, setOwnsByCookie] = useState(false);
 
   const [flyToTarget, setFlyToTarget] = useState<{
     lat: number;
@@ -100,18 +125,22 @@ export default function JawirMapApp() {
       return [];
     }
 
-    let fetched = list.value.data || [];
+    const deleted = recentlyDeletedIds();
+    let fetched = (list.value.data || []).filter((t) => !deleted.has(t.id));
     const mine = me.status === 'fulfilled' ? me.value.data : null;
-    if (mine && !fetched.some((t) => t.id === mine.id)) fetched = [mine, ...fetched];
+    // /me is never cached, so its copy (fresh coffee count) replaces any stale one from the list.
+    if (mine) fetched = [mine, ...fetched.filter((t) => t.id !== mine.id)];
 
     if (mine) {
       setUserTag(mine);
+      setOwnsByCookie(true);
       writeSavedTag(mine);
     } else if (me.status === 'fulfilled') {
       // No owner cookie match. Pins made before owner cookies existed are still recognised from localStorage.
       const saved = readSavedTag();
       const legacy = saved ? fetched.find((t) => t.id === saved.id) : undefined;
       setUserTag(legacy || null);
+      setOwnsByCookie(false);
       writeSavedTag(legacy || null);
     }
 
@@ -226,6 +255,7 @@ export default function JawirMapApp() {
 
   const handleTagCreated = (newTag: JawirTagData) => {
     setUserTag(newTag);
+    setOwnsByCookie(true);
     selectTag(newTag);
     setPickedCoords(null);
     setTags((prev) => (prev.some((t) => t.id === newTag.id) ? prev : [newTag, ...prev]));
@@ -242,6 +272,8 @@ export default function JawirMapApp() {
   // 409 with the owner's own pin: show the old passport without the new-pin celebration.
   const handleExistingTag = (existing: JawirTagData, message?: string) => {
     setUserTag(existing);
+    // existingTag is only returned when the owner cookie matched.
+    setOwnsByCookie(true);
     setTags((prev) => (prev.some((t) => t.id === existing.id) ? prev : [existing, ...prev]));
     setPickedCoords(null);
     setIsTagModalOpen(false);
@@ -264,9 +296,11 @@ export default function JawirMapApp() {
       return 'Pine gagal dibusak. Jajal maneh, lur.';
     }
     const goneId = userTag.id;
+    rememberDeleted(goneId);
     setTags((prev) => prev.filter((t) => t.id !== goneId));
     if (selectedTagForLine?.id === goneId) selectTag(null);
     setUserTag(null);
+    setOwnsByCookie(false);
     writeSavedTag(null);
     setPopupAfterClose(null);
     setIsIdCardOpen(false);
@@ -405,7 +439,7 @@ export default function JawirMapApp() {
         tag={userTag}
         isNewCreation={isNewCreation}
         note={idCardNote}
-        onDelete={handleDeleteMyTag}
+        onDelete={ownsByCookie ? handleDeleteMyTag : undefined}
       />
     </main>
   );

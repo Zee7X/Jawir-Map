@@ -13,7 +13,7 @@ import { memoryStore, type JawirTagItem, type PublicTag } from '@/lib/memoryStor
 import { hashString } from '@/lib/hash';
 import { isDuplicateOnKey } from '@/lib/dbErrors';
 import { isCleanText } from '@/lib/filter';
-import { listPublicTags, findTagByOwner, rowToPublic } from '@/lib/tagStore';
+import { listPublicTags, findTagByOwner, rowToPublic, PUBLIC_COLUMNS } from '@/lib/tagStore';
 import { getClientIp, newOwnerToken, readOwnerHash, setOwnerCookie, envInt } from '@/lib/request';
 import { randomUUID } from 'crypto';
 
@@ -202,7 +202,7 @@ export async function POST(request: NextRequest) {
       }
       if (!assigned) throw new Error('Gagal dapat nomor Jawir setelah beberapa percobaan');
 
-      const [inserted] = await db.select().from(jawirTags).where(eq(jawirTags.id, id)).limit(1);
+      const [inserted] = await db.select(PUBLIC_COLUMNS).from(jawirTags).where(eq(jawirTags.id, id)).limit(1);
       assignedJawirNumber = Number(inserted?.jawirNumber);
       if (inserted) {
         const response = NextResponse.json({ success: true, data: rowToPublic(inserted) }, { status: 201 });

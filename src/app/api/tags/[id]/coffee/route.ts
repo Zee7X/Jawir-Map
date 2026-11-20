@@ -10,7 +10,19 @@ import { getClientIp, readOwnerHash, envInt } from '@/lib/request';
 export const dynamic = 'force-dynamic';
 
 // The fingerprint comes from the browser, so a script could vote with endless fake ones; the IP cap bounds that.
-const MAX_COFFEE_PER_IP_PER_HOUR = envInt('MAX_COFFEE_PER_IP_PER_HOUR', 60);
+// Many phones share one carrier IP (CGNAT), so the default is generous.
+const MAX_COFFEE_PER_IP_PER_HOUR = envInt('MAX_COFFEE_PER_IP_PER_HOUR', 150);
+
+// Pins with an owner token are matched by cookie only, since fingerprints collide across phones of the same model.
+// Pins made before owner tokens existed fall back to the device fingerprint.
+function isOwnPin(
+  pin: { deviceHash?: string | null; ownerHash?: string | null },
+  deviceHash: string,
+  ownerHash: string | null
+): boolean {
+  if (pin.ownerHash) return ownerHash === pin.ownerHash;
+  return pin.deviceHash === deviceHash;
+}
 
 const alreadyResponse = () =>
   NextResponse.json({ success: false, already: true, message: 'Kopimu wis kiriman, lur.' }, { status: 409 });
@@ -58,7 +70,7 @@ export async function POST(
         .where(eq(jawirTags.id, id))
         .limit(1);
       if (found.length === 0) return notFoundResponse();
-      if (found[0].deviceHash === deviceHash || (ownerHash && found[0].ownerHash === ownerHash)) return ownResponse();
+      if (isOwnPin(found[0], deviceHash, ownerHash)) return ownResponse();
 
       const [recent] = await db
         .select({ val: count() })
@@ -90,7 +102,7 @@ export async function POST(
 
     const tag = memoryStore.find((item) => item.id === id);
     if (!tag) return notFoundResponse();
-    if (tag.deviceHash === deviceHash || (ownerHash && tag.ownerHash === ownerHash)) return ownResponse();
+    if (isOwnPin(tag, deviceHash, ownerHash)) return ownResponse();
 
     const since = Date.now() - 60 * 60 * 1000;
     while (memoryCoffeeLog.length && memoryCoffeeLog[0].at < since) memoryCoffeeLog.shift();
