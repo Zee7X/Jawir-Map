@@ -29,8 +29,18 @@ interface BottomActionBarProps {
 
 const PICK_MIN_ZOOM = 11;
 
+// Phones stack a short label under the icon, wider screens put the full label beside it.
 const QUIET =
-  'flex items-center justify-center gap-2 h-11 min-w-11 px-3 rounded-md text-sm font-bold text-ink hover:bg-parchment-deep transition';
+  'flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-2 h-11 min-w-11 px-2 sm:px-3 rounded-md text-[10px] sm:text-sm font-bold text-ink hover:bg-parchment-deep transition';
+
+function QuietLabel({ short, full }: { short: string; full: string }) {
+  return (
+    <>
+      <span className="sm:hidden leading-none">{short}</span>
+      <span className="hidden sm:inline">{full}</span>
+    </>
+  );
+}
 
 export default function BottomActionBar({
   userTag,
@@ -58,7 +68,7 @@ export default function BottomActionBar({
   const tooFar = !pickCenter || pickCenter.zoom < PICK_MIN_ZOOM;
 
   return (
-    <div className="fixed bottom-6 left-3 right-3 z-[900] pointer-events-none flex flex-col items-center gap-2 pb-[env(safe-area-inset-bottom,0px)]">
+    <div className="fixed bottom-6 left-3 right-3 z-[900] pointer-events-none select-none flex flex-col items-center gap-2 pb-[env(safe-area-inset-bottom,0px)]">
       {isPickingLocation && (
         <section
           aria-label="Milih titik neng peta"
@@ -130,9 +140,9 @@ export default function BottomActionBar({
                 <IdCard className="w-4 h-4 shrink-0" />
                 <span>KTP Jawirku</span>
               </button>
-              <button onClick={onFlyToMyTag} className={QUIET} aria-label="Menyang titikku">
+              <button onClick={onFlyToMyTag} className={QUIET} title="Menyang titikku">
                 <Crosshair className="w-4 h-4 text-moss shrink-0" />
-                <span className="hidden sm:inline">Titikku</span>
+                <span className="leading-none sm:leading-normal">Titikku</span>
               </button>
             </>
           ) : (
@@ -147,13 +157,13 @@ export default function BottomActionBar({
 
           <span className="w-px h-6 bg-amber-900/15 mx-0.5" aria-hidden />
 
-          <button onClick={onFlyToLawu} className={QUIET} aria-label="Menyang Pucak Lawu">
+          <button onClick={onFlyToLawu} className={QUIET} title="Menyang Pucak Lawu">
             <Mountain className="w-4 h-4 text-terra shrink-0" />
-            <span className="hidden sm:inline">Titik 0 Lawu</span>
+            <QuietLabel short="Lawu" full="Titik 0 Lawu" />
           </button>
-          <button onClick={onShuffle} className={QUIET} aria-label="Mlumpat menyang Jawir sembarang">
+          <button onClick={onShuffle} className={QUIET} title="Mlumpat menyang Jawir sembarang">
             <Shuffle className="w-4 h-4 text-ink-soft shrink-0" />
-            <span className="hidden sm:inline">Ngacak</span>
+            <span className="leading-none sm:leading-normal">Ngacak</span>
           </button>
         </div>
       )}

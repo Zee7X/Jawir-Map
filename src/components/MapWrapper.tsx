@@ -4,7 +4,7 @@ import dynamic from 'next/dynamic';
 import React from 'react';
 import { Mountain } from 'lucide-react';
 import { JawirTagData } from './TagModal';
-import type { PickCenter } from './WorldMap';
+import type { CoffeeResult, PickCenter } from './WorldMap';
 
 interface FlyToTarget {
   lat: number;
@@ -21,7 +21,7 @@ interface MapWrapperProps {
   pickStart: { lat: number; lng: number } | null;
   onPickCenter: (center: PickCenter) => void;
   onOpenLore: () => void;
-  onAddCoffee: (tagId: string) => Promise<'sent' | 'already' | 'own' | 'error'>;
+  onAddCoffee: (tagId: string) => Promise<CoffeeResult>;
   selectedTagForLine: JawirTagData | null;
   onSelectTagForLine: (tag: JawirTagData | null) => void;
 }

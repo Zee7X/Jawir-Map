@@ -4,14 +4,9 @@ import React, { useEffect, useState } from 'react';
 import { JawirTagData } from './TagModal';
 import Dossier from './Dossier';
 import { TRAH_MAP, REGION_BADGE_MAP } from '@/lib/geo';
+import type { LeaderboardData } from '@/lib/leaderboard';
 
-export interface LeaderboardData {
-  topFarthest: JawirTagData[];
-  topClosest: JawirTagData[];
-  topCoffee: JawirTagData[];
-  regionStats: Record<string, number>;
-  trahStats: Record<string, number>;
-}
+export type { LeaderboardData };
 
 interface LeaderboardModalProps {
   isOpen: boolean;
