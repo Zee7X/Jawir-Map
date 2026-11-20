@@ -27,6 +27,9 @@ Uji filter kata: `node --experimental-strip-types scripts/filter-cases.mjs`
 | `NEXT_PUBLIC_SITE_URL` | Tidak | Default `https://jawirmap.lumelo.my.id`. Dipakai untuk canonical dan preview link. |
 | `MAX_PINS_PER_IP_PER_DAY` | Tidak | Default `10`. |
 | `MAX_COFFEE_PER_IP_PER_HOUR` | Tidak | Default `150`. |
+| `ADMIN_PASSWORD` | Tidak | Sandi halaman `/admin`, minimal 12 karakter. Tanpa ini `/admin` mati (404). |
+| `REPORT_HIDE_THRESHOLD` | Tidak | Default `3`. Jumlah browser berbeda yang melapor sebelum pin otomatis disembunyikan. |
+| `MAX_REPORTS_PER_IP_PER_HOUR` | Tidak | Default `20`. |
 
 Membuat `HASH_SALT`: `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`
 
@@ -42,6 +45,16 @@ Nomor Jawir diambil dari baris `jawir_number` di `jawir_counters` yang hanya nai
 - Suara kopi memakai cookie `jawir_voter` (httpOnly, satu per browser), sehingga dua HP dengan fingerprint sama tetap punya suara masing-masing.
 - Fingerprint perangkat (FingerprintJS) tidak lagi membatasi pembuatan pin, karena HP dengan model sama sering punya fingerprint sama. Fingerprint hanya dipakai untuk mengenali pin lama yang belum punya `owner_hash`.
 - Form pin mengirim `submissionId` acak yang dipakai sebagai id pin, jadi tap ganda atau kirim ulang dari form yang sama tidak membuat pin kedua.
+
+## Moderasi
+
+- Tombol **Laporke** di popup pin mengirim satu laporan per browser per pin (cookie `jawir_voter`), dengan alasan `saru`, `spam`, `sara`, `pribadi`, atau `liyane`. Laporan disimpan di `jawir_reports`.
+- Setelah `REPORT_HIDE_THRESHOLD` browser berbeda melapor, kolom `jawir_tags.hidden_at` diisi. Pin itu hilang dari peta, `/p/<id>`, gambar OG, dan tidak bisa dititipi kopi. Pemiliknya tetap melihat pinnya, dengan catatan bahwa pinnya sedang disembunyikan.
+- `/admin` (dilindungi `ADMIN_PASSWORD`, cookie sesi httpOnly `SameSite=Strict`, tidak diindeks) menampilkan pin yang dilaporkan, pin yang disembunyikan, dan semua pin. Admin bisa menyembunyikan, menampilkan lagi (sekaligus menghapus laporannya), atau menghapus pin.
+
+## Analytics
+
+Vercel Web Analytics (`@vercel/analytics`) dipasang di `layout.tsx`. Analytics ini tanpa cookie dan baru mencatat setelah Web Analytics diaktifkan di dashboard Vercel (tab **Analytics → Enable**).
 
 ## Link share
 

@@ -29,6 +29,8 @@ export interface JawirTagData {
   coffeeCount?: number;
   createdAt: string;
   isNpc?: boolean;
+  // Owner's copy only: hidden from others after reports, until an admin reviews it.
+  hidden?: boolean;
 }
 
 interface TagModalProps {

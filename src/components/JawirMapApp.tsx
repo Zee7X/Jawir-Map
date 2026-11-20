@@ -2,11 +2,13 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import MapWrapper from '@/components/MapWrapper';
-import type { CoffeeResult, PickCenter } from '@/components/WorldMap';
+import type { CoffeeResult, PickCenter, ReportOutcome } from '@/components/WorldMap';
 import TopStatsBar from '@/components/TopStatsBar';
 import BottomActionBar from '@/components/BottomActionBar';
 import TagModal, { JawirTagData } from '@/components/TagModal';
 import LoreModal from '@/components/LoreModal';
+import FilterModal from '@/components/FilterModal';
+import { EMPTY_FILTER, activeFilterCount, matchesFilter, type PinFilter } from '@/lib/pinFilter';
 import LeaderboardModal from '@/components/LeaderboardModal';
 import JawirIdCardModal from '@/components/JawirIdCardModal';
 import { getFingerprintId } from '@/lib/fingerprint';
@@ -98,6 +100,10 @@ export default function JawirMapApp({ initialTagId }: { initialTagId?: string })
   // True only when this browser holds the pin's owner cookie; legacy pins known from localStorage cannot be deleted.
   const [ownsByCookie, setOwnsByCookie] = useState(false);
   const [coffeeNews, setCoffeeNews] = useState<{ fresh: number; total: number } | null>(null);
+  const [filter, setFilter] = useState<PinFilter>(EMPTY_FILTER);
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [tickerIndex, setTickerIndex] = useState(0);
+  const [isWide, setIsWide] = useState(false);
 
   const [flyToTarget, setFlyToTarget] = useState<{
     lat: number;
@@ -126,6 +132,19 @@ export default function JawirMapApp({ initialTagId }: { initialTagId?: string })
   const leaderboard = useMemo(() => buildLeaderboard(tags), [tags]);
   const farthestTag = leaderboard.topFarthest[0] || null;
   const warLine = useMemo(() => trahWarLine(leaderboard.trahWar, userTag?.trah as TrahType | undefined), [leaderboard, userTag]);
+  const advanceTicker = useCallback(() => setTickerIndex((i) => i + 1), []);
+  const filterCount = activeFilterCount(filter);
+  // The map, shuffle and the search list follow the filter; totals and the leaderboard always count every pin.
+  const visibleTags = useMemo(() => (filterCount ? tags.filter((t) => matchesFilter(t, filter)) : tags), [tags, filter, filterCount]);
+
+  // Desktop shows the farthest record in the top bar; phones get it as a second line in the rotating banner.
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 768px)');
+    const update = () => setIsWide(mq.matches);
+    update();
+    mq.addEventListener('change', update);
+    return () => mq.removeEventListener('change', update);
+  }, []);
 
   const selectTag = useCallback((tag: JawirTagData | null) => {
     setSelectedTagForLine(tag);
@@ -248,6 +267,9 @@ export default function JawirMapApp({ initialTagId }: { initialTagId?: string })
   };
 
   const handleShuffle = () => {
+    // Skip the pin that is already open, so Ngacak always goes somewhere new.
+    const others = visibleTags.filter((t) => t.id !== selectedTagForLine?.id);
+    const tags = others.length ? others : visibleTags;
     if (tags.length === 0) return;
     const randomIndex = Math.floor(Math.random() * tags.length);
     const chosen = tags[randomIndex];
@@ -340,6 +362,26 @@ export default function JawirMapApp({ initialTagId }: { initialTagId?: string })
     return null;
   };
 
+  // A report that hides the pin removes it from this map at once; others stop seeing it within the cache window.
+  const handleReportPin = async (tagId: string, reason: string): Promise<ReportOutcome> => {
+    try {
+      const res = await fetch(`/api/tags/${tagId}/report`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (data.hidden) {
+        rememberDeleted(tagId);
+        setTags((prev) => prev.filter((t) => t.id !== tagId));
+        if (selectedTagForLine?.id === tagId) selectTag(null);
+      }
+      return { ok: !!data.success, hidden: !!data.hidden, message: data.message || 'Laporane gagal dikirim. Jajal maneh.' };
+    } catch {
+      return { ok: false, hidden: false, message: 'Laporane gagal dikirim. Jajal maneh.' };
+    }
+  };
+
   // Resolves to a CoffeeResult so the popup can show its own feedback.
   const handleAddCoffee = async (tagId: string): Promise<CoffeeResult> => {
     const storageKey = `jawir_coffee_${tagId}`;
@@ -381,6 +423,8 @@ export default function JawirMapApp({ initialTagId }: { initialTagId?: string })
         onOpenLeaderboard={() => setIsLeaderboardOpen(true)}
         onOpenLore={() => setIsLoreModalOpen(true)}
         onFlyToFarthest={handleFlyToFarthest}
+        onOpenSearch={() => setIsFilterOpen(true)}
+        activeFilters={filterCount}
       />
 
       {loadState === 'error' && (
@@ -399,22 +443,41 @@ export default function JawirMapApp({ initialTagId }: { initialTagId?: string })
         </div>
       )}
 
-      {loadState === 'ok' && warLine && !isPickingLocation && !selectedTagForLine && (
-        <button
-          type="button"
-          onClick={() => setIsLeaderboardOpen(true)}
-          className="fixed top-[72px] left-3 z-[890] max-w-[calc(100%-24px)] sm:max-w-md flex items-center gap-2 pl-3 pr-2.5 py-2 rounded-md bg-parchment-card border border-dashed border-terra/50 text-left text-[13px] leading-snug text-ink shadow-[0_2px_10px_-3px_rgba(67,48,30,0.3)] hover:border-terra transition select-none"
-        >
-          <span className="flex-1">
-            <b className="text-terra-deep">Perang Trah:</b> {warLine}
-          </span>
-          <span className="shrink-0 font-type text-xs font-bold text-terra-deep underline underline-offset-2">Klasemen</span>
-        </button>
+      {loadState === 'ok' && !isPickingLocation && !selectedTagForLine && filterCount > 0 && (
+        <div className="fixed top-[72px] left-3 z-[890] max-w-[calc(100%-24px)] sm:max-w-md flex items-center gap-2 pl-3 pr-1.5 py-1.5 rounded-md bg-ink text-parchment text-[13px] shadow-[0_2px_10px_-3px_rgba(67,48,30,0.4)] select-none">
+          <button type="button" onClick={() => setIsFilterOpen(true)} className="flex-1 text-left py-0.5">
+            🔎 Nyaring: <b className="font-type">{visibleTags.length}</b> saka <b className="font-type">{tags.length}</b> pin
+          </button>
+          <button
+            type="button"
+            onClick={() => setFilter(EMPTY_FILTER)}
+            className="shrink-0 h-8 px-2.5 rounded bg-parchment/15 hover:bg-parchment/25 text-xs font-bold"
+          >
+            Reset
+          </button>
+        </div>
+      )}
+
+      {loadState === 'ok' && !isPickingLocation && !selectedTagForLine && filterCount === 0 && (
+        <NewsTicker
+          index={tickerIndex}
+          onAdvance={advanceTicker}
+          items={[
+            !!warLine && { key: 'war', label: 'Perang Trah', text: warLine as string, action: 'Klasemen', onClick: () => setIsLeaderboardOpen(true) },
+            !isWide && farthestTag && {
+              key: 'record',
+              label: 'Rekor paling adoh',
+              text: `${farthestTag.nickname}, ${farthestTag.distanceKm.toLocaleString('id-ID')} km saka Lawu.`,
+              action: 'Mabur',
+              onClick: () => handleFlyToFarthest(farthestTag),
+            },
+          ]}
+        />
       )}
 
       {/* Main Interactive Map */}
       <MapWrapper
-        tags={tags}
+        tags={visibleTags}
         userTagId={userTag?.id}
         flyToTarget={flyToTarget}
         isPickingLocation={isPickingLocation}
@@ -422,6 +485,7 @@ export default function JawirMapApp({ initialTagId }: { initialTagId?: string })
         onPickCenter={setPickCenter}
         onOpenLore={() => setIsLoreModalOpen(true)}
         onAddCoffee={handleAddCoffee}
+        onReportPin={handleReportPin}
         selectedTagForLine={selectedTagForLine}
         onSelectTagForLine={selectTag}
       />
@@ -459,6 +523,21 @@ export default function JawirMapApp({ initialTagId }: { initialTagId?: string })
 
       <LoreModal isOpen={isLoreModalOpen} onClose={() => setIsLoreModalOpen(false)} />
 
+      <FilterModal
+        isOpen={isFilterOpen}
+        onClose={() => setIsFilterOpen(false)}
+        tags={tags}
+        filter={filter}
+        onChange={setFilter}
+        onPick={(tag) => {
+          // A picked result must stay on the map, so drop chip filters that would hide it.
+          if (!matchesFilter(tag, { ...filter, query: '' })) setFilter(EMPTY_FILTER);
+          else setFilter({ ...filter, query: '' });
+          selectTag(tag);
+          setFlyToTarget({ lat: tag.lat, lng: tag.lng, zoom: 13, tagId: tag.id });
+        }}
+      />
+
       <LeaderboardModal
         isOpen={isLeaderboardOpen}
         onClose={() => setIsLeaderboardOpen(false)}
@@ -492,5 +571,41 @@ export default function JawirMapApp({ initialTagId }: { initialTagId?: string })
         onVisitNpc={handleVisitNpc}
       />
     </main>
+  );
+}
+
+interface TickerItem {
+  key: string;
+  label: string;
+  text: string;
+  action: string;
+  onClick: () => void;
+}
+
+const TICKER_MS = 7000;
+
+// One banner under the header that rotates through short news lines (trah war, record holder).
+function NewsTicker({ items, index, onAdvance }: { items: (TickerItem | null | false | undefined)[]; index: number; onAdvance: () => void }) {
+  const list = items.filter(Boolean) as TickerItem[];
+  useEffect(() => {
+    if (list.length < 2) return;
+    const t = setTimeout(onAdvance, TICKER_MS);
+    return () => clearTimeout(t);
+  }, [index, list.length, onAdvance]);
+  if (list.length === 0) return null;
+  const item = list[index % list.length];
+
+  return (
+    <button
+      type="button"
+      onClick={item.onClick}
+      aria-live="polite"
+      className="fixed top-[72px] left-3 z-[890] max-w-[calc(100%-24px)] sm:max-w-md flex items-center gap-2 pl-3 pr-2.5 py-2 rounded-md bg-parchment-card border border-dashed border-terra/50 text-left text-[13px] leading-snug text-ink shadow-[0_2px_10px_-3px_rgba(67,48,30,0.3)] hover:border-terra transition select-none"
+    >
+      <span key={item.key} className="flex-1 animate-[ticker-in_300ms_ease-out] motion-reduce:animate-none">
+        <b className="text-terra-deep">{item.label}:</b> {item.text}
+      </span>
+      <span className="shrink-0 font-type text-xs font-bold text-terra-deep underline underline-offset-2">{item.action}</span>
+    </button>
   );
 }

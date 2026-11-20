@@ -30,6 +30,7 @@ export const jawirTags = mysqlTable(
     ipHash: varchar('ip_hash', { length: 64 }).notNull(), // SHA-256 IP + Salt
     // SHA-256 of the random owner token kept in the creator's httpOnly cookie. NULL for pins made before tokens existed.
     ownerHash: varchar('owner_hash', { length: 64 }),
+    hiddenAt: timestamp('hidden_at'), // set by reports crossing the threshold or by an admin
     createdAt: timestamp('created_at').defaultNow().notNull(),
   },
   (table) => ({
@@ -58,6 +59,21 @@ export const jawirCoffeeVotes = mysqlTable(
 
 export type JawirTag = typeof jawirTags.$inferSelect;
 export type NewJawirTag = typeof jawirTags.$inferInsert;
+
+export const jawirReports = mysqlTable(
+  'jawir_reports',
+  {
+    tagId: varchar('tag_id', { length: 36 }).notNull(),
+    reporterHash: varchar('reporter_hash', { length: 64 }).notNull(), // hash of the jawir_voter cookie
+    ipHash: varchar('ip_hash', { length: 64 }).notNull(),
+    reason: varchar('reason', { length: 20 }).notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (table) => ({
+    pk: primaryKey({ columns: [table.tagId, table.reporterHash] }),
+    ipIdx: index('idx_report_ip').on(table.ipHash, table.createdAt),
+  })
+);
 
 // Counters that only grow (row 'jawir_number'), so a deleted pin's number is never reissued.
 export const jawirCounters = mysqlTable('jawir_counters', {

@@ -376,6 +376,12 @@ export default function JawirIdCardModal({ isOpen, onClose, tag, isNewCreation =
           <b className="font-type text-terra-deep">{tag.coffeeCount || 0}</b>
         </p>
 
+        {tag.hidden && (
+          <p role="status" className="rounded border border-stamp/40 bg-[#fdecea] px-3 py-2.5 text-sm text-[#7f1d1d]">
+            Pinmu lagi didhelikake saka peta amarga dilaporke sawetara sedulur. Admin bakal mriksa. Yen ana sing salah, busak terus pasang maneh.
+          </p>
+        )}
+
         <VisaPage onVisitNpc={onVisitNpc} />
 
         {note && (

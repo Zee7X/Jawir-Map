@@ -17,7 +17,7 @@ Karena itu Lawu jadi **Titik 0**. Setiap pin di peta ditarik benang merah ke pun
 1. **Tancepke pin.** Isi nama panggilan, pilih trah asal dan sedang ngapain, lalu tulis semboyan singkat. Lokasi bisa diambil dari GPS atau dipilih langsung di peta.
 2. **Terima Paspor Jawir.** Paspor Diplomatik digital langsung terbit, lengkap dengan nomor urut Jawir, kasta wilayah, jarak dari Lawu, cap Juru Kunci Gunung Lawu, dan kode MRZ ala paspor sungguhan. Simpan sebagai PNG untuk Story.
 3. **Pamerkan.** Bagikan link pinmu. Di WhatsApp, X, dan Telegram link itu muncul sebagai kartu paspor lengkap dengan nama, semboyan, dan jarakmu, plus tantangan: *"Aku 14.820 km saka Pucak Lawu. Kowe piro?"*
-4. **Jelajahi.** Klik pin sedulur lain untuk membaca semboyannya dan melihat rute benang merahnya ke Lawu. Bisa juga terbang ke rekor paling jauh, atau tekan **Ngacak** untuk mampir ke Jawir acak.
+4. **Jelajahi.** Klik pin sedulur lain untuk membaca semboyannya dan melihat rute benang merahnya ke Lawu. Pakai **Golek** untuk mencari nama atau menyaring peta berdasarkan trah, kegiatan, dan wilayah. Bisa juga terbang ke rekor paling jauh, atau tekan **Ngacak** untuk mampir ke Jawir acak.
 
 <table>
   <tr>
@@ -67,6 +67,7 @@ Begini tampilan link pin saat dibagikan ke WhatsApp, X, atau Telegram:
 - **Lokasimu disamarkan.** Titikmu digeser acak beberapa ratus meter, jadi ibu kos tidak bisa melacakmu.
 - **Satu orang, satu pin.** Mau ganti? Hapus pinmu dari menu **Paspor Jawirku**, lalu pasang lagi.
 - **Peta bersih dari sampah.** Nama dan semboyan otomatis ditolak kalau berisi link, nomor HP, akun medsos, promosi judol, narkoba, SARA, atau kata kasar, termasuk yang ditulis dengan trik huruf seperti `4nj1ng` atau `a.s.u`.
+- **Bisa dilaporkan.** Pin yang tidak pantas bisa dilaporkan dari popup-nya. Kalau tiga orang berbeda melapor, pin itu otomatis disembunyikan sampai diperiksa admin.
 - **Tanpa akun.** Tidak perlu daftar atau login. Data perangkat dan IP hanya disimpan dalam bentuk hash.
 
 ## Untuk developer
