@@ -5,7 +5,7 @@ import { and, count, eq, sql } from 'drizzle-orm';
 import { hashString } from '@/lib/hash';
 import { isDuplicateKeyError } from '@/lib/dbErrors';
 import { memoryStore, memoryCoffeeVotes, memoryCoffeeLog } from '@/lib/memoryStore';
-import { getClientIp, readOwnerHash, envInt } from '@/lib/request';
+import { getClientIp, readOwnerHash, readOrCreateVoterToken, setVoterCookie, envInt } from '@/lib/request';
 
 export const dynamic = 'force-dynamic';
 
@@ -60,6 +60,14 @@ export async function POST(
     const deviceHash = hashString(fingerprintId.trim());
     const ipHash = hashString(getClientIp(request));
     const ownerHash = readOwnerHash(request);
+    // Votes are keyed per browser (voter cookie), not per fingerprint, which collides across phones of the same model.
+    // The value lives in the votes table's device_hash column; the prefix keeps it apart from old fingerprint votes.
+    const voter = readOrCreateVoterToken(request);
+    const voterHash = hashString(`voter:${voter.token}`);
+    const respond = (response: NextResponse) => {
+      if (voter.isNew) setVoterCookie(response, voter.token);
+      return response;
+    };
 
     if (isDbConfigured && db) {
       await ensureTable();
@@ -70,19 +78,19 @@ export async function POST(
         .where(eq(jawirTags.id, id))
         .limit(1);
       if (found.length === 0) return notFoundResponse();
-      if (isOwnPin(found[0], deviceHash, ownerHash)) return ownResponse();
+      if (isOwnPin(found[0], deviceHash, ownerHash)) return respond(ownResponse());
 
       const [recent] = await db
         .select({ val: count() })
         .from(jawirCoffeeVotes)
         .where(and(eq(jawirCoffeeVotes.ipHash, ipHash), sql`${jawirCoffeeVotes.createdAt} >= NOW() - INTERVAL 1 HOUR`));
-      if (Number(recent?.val || 0) >= MAX_COFFEE_PER_IP_PER_HOUR) return limitedResponse();
+      if (Number(recent?.val || 0) >= MAX_COFFEE_PER_IP_PER_HOUR) return respond(limitedResponse());
 
       // The (tag_id, device_hash) primary key makes the vote atomic: a duplicate throws.
       try {
-        await db.insert(jawirCoffeeVotes).values({ tagId: id, deviceHash, ipHash });
+        await db.insert(jawirCoffeeVotes).values({ tagId: id, deviceHash: voterHash, ipHash });
       } catch (err) {
-        if (isDuplicateKeyError(err)) return alreadyResponse();
+        if (isDuplicateKeyError(err)) return respond(alreadyResponse());
         throw err;
       }
 
@@ -97,26 +105,26 @@ export async function POST(
         .where(eq(jawirTags.id, id))
         .limit(1);
 
-      return NextResponse.json({ success: true, coffeeCount: Number(updated[0]?.coffeeCount || 0) });
+      return respond(NextResponse.json({ success: true, coffeeCount: Number(updated[0]?.coffeeCount || 0) }));
     }
 
     const tag = memoryStore.find((item) => item.id === id);
     if (!tag) return notFoundResponse();
-    if (isOwnPin(tag, deviceHash, ownerHash)) return ownResponse();
+    if (isOwnPin(tag, deviceHash, ownerHash)) return respond(ownResponse());
 
     const since = Date.now() - 60 * 60 * 1000;
     while (memoryCoffeeLog.length && memoryCoffeeLog[0].at < since) memoryCoffeeLog.shift();
     if (memoryCoffeeLog.filter((v) => v.ipHash === ipHash && v.at >= since).length >= MAX_COFFEE_PER_IP_PER_HOUR) {
-      return limitedResponse();
+      return respond(limitedResponse());
     }
 
-    const voteKey = `${id}:${deviceHash}`;
-    if (memoryCoffeeVotes.has(voteKey)) return alreadyResponse();
+    const voteKey = `${id}:${voterHash}`;
+    if (memoryCoffeeVotes.has(voteKey)) return respond(alreadyResponse());
     memoryCoffeeVotes.add(voteKey);
     memoryCoffeeLog.push({ ipHash, at: Date.now() });
     tag.coffeeCount += 1;
 
-    return NextResponse.json({ success: true, coffeeCount: tag.coffeeCount });
+    return respond(NextResponse.json({ success: true, coffeeCount: tag.coffeeCount }));
   } catch (error) {
     console.error('Error incrementing coffee count:', error);
     return NextResponse.json(

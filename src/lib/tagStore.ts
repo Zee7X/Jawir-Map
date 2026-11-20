@@ -66,7 +66,7 @@ export async function findPublicTag(id: string): Promise<PublicTag | null> {
   return item ? memoryToPublic(item) : null;
 }
 
-// Anything a /?tag=<id> link can point at: a real pin or one of the legend NPCs.
+// Anything a /p/<id> link can point at: a real pin or one of the legend NPCs.
 export async function findShareableTag(id: string): Promise<PublicTag | null> {
   const npc = NPC_PINS.find((n) => n.id === id);
   if (npc) return { ...npc, jawirNumber: npc.jawirNumber ?? 0 };

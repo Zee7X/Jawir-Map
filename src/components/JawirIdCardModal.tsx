@@ -8,6 +8,7 @@ import { JawirTagData } from './TagModal';
 import Dossier from './Dossier';
 import TrahPortrait from './TrahPortrait';
 import { REGION_BADGE_MAP, TRAH_MAP, RegionStatusType, TrahType } from '@/lib/geo';
+import { pinShareUrl } from '@/lib/share';
 
 interface JawirIdCardModalProps {
   isOpen: boolean;
@@ -178,7 +179,7 @@ export default function JawirIdCardModal({ isOpen, onClose, tag, isNewCreation =
   };
 
   const handleShare = async () => {
-    const shareUrl = `${window.location.origin}/?tag=${tag.id}`;
+    const shareUrl = pinShareUrl(tag.id);
     const text = `Resmi kacathet dadi Jawir No. ${tag.jawirNumber || 1} sedonya: ${tag.nickname}, ${tag.distanceKm.toLocaleString('id-ID')} km saka Titik 0 Pucak Lawu. Tancepke pinmu uga, lur: ${shareUrl}`;
     if (navigator.share) {
       try {

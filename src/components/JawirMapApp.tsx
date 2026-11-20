@@ -12,15 +12,16 @@ import JawirIdCardModal from '@/components/JawirIdCardModal';
 import { getFingerprintId } from '@/lib/fingerprint';
 import { buildLeaderboard } from '@/lib/leaderboard';
 import { LAWU_CENTER, NPC_PINS, calculateDistanceKm } from '@/lib/geo';
+import { pinPath } from '@/lib/share';
 
 const RADAR_KM = 3;
 const MY_TAG_KEY = 'jawir_my_tag';
 
-// Keeps the address bar on /?tag=<id> for the selected pin without navigating.
+// Keeps the address bar on /p/<id> for the selected pin (a link that previews when shared) without navigating.
 function syncTagParam(id: string | null) {
   const url = new URL(window.location.href);
-  if (id) url.searchParams.set('tag', id);
-  else url.searchParams.delete('tag');
+  url.pathname = id ? pinPath(id) : '/';
+  url.searchParams.delete('tag');
   window.history.replaceState(window.history.state, '', url);
 }
 
@@ -72,7 +73,8 @@ async function fetchJson<T>(url: string): Promise<T> {
   return data as T;
 }
 
-export default function JawirMapApp() {
+// initialTagId comes from /p/<id>; the homepage also honours old /?tag=<id> links.
+export default function JawirMapApp({ initialTagId }: { initialTagId?: string }) {
   const [tags, setTags] = useState<JawirTagData[]>([]);
   const [loadState, setLoadState] = useState<'loading' | 'ok' | 'error'>('loading');
   const [userTag, setUserTag] = useState<JawirTagData | null>(null);
@@ -152,14 +154,17 @@ export default function JawirMapApp() {
   useEffect(() => {
     setUserTag(readSavedTag());
     loadPins().then((fetched) => {
-      const id = new URLSearchParams(window.location.search).get('tag');
+      const id = initialTagId || new URLSearchParams(window.location.search).get('tag');
       if (!id) return;
       const target = [...fetched, ...NPC_PINS].find((t) => t.id === id);
-      if (!target) return;
+      if (!target) {
+        syncTagParam(null);
+        return;
+      }
       selectTag(target);
       setFlyToTarget({ lat: target.lat, lng: target.lng, zoom: 13, tagId: target.id });
     });
-  }, [loadPins, selectTag]);
+  }, [loadPins, selectTag, initialTagId]);
 
   const radarInfo = useMemo(() => {
     if (!userTag || tags.length <= 1) return null;

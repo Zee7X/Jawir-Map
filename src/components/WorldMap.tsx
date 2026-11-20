@@ -27,6 +27,7 @@ import {
   TrahType,
 } from '@/lib/geo';
 import { JawirTagData } from './TagModal';
+import { pinShareUrl } from '@/lib/share';
 
 interface FlyToTarget {
   lat: number;
@@ -332,7 +333,7 @@ function ShareButton({ tagId }: { tagId: string }) {
   const handleClick = async (e: React.MouseEvent) => {
     e.stopPropagation();
     try {
-      await navigator.clipboard.writeText(`${window.location.origin}/?tag=${tagId}`);
+      await navigator.clipboard.writeText(pinShareUrl(tagId));
       setNote('Link wis disalin');
     } catch {
       setNote('Link gagal disalin. Salin saka bar alamat.');

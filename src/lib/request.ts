@@ -44,6 +44,20 @@ export function clearOwnerCookie(response: NextResponse) {
   response.cookies.set(OWNER_COOKIE, '', { ...cookieOptions, maxAge: 0 });
 }
 
+// Voter token: one per browser, so two phones whose fingerprints collide still get a coffee vote each.
+const VOTER_COOKIE = 'jawir_voter';
+
+// Returns the browser's voter token, or a fresh one with `isNew` so the caller can set the cookie.
+export function readOrCreateVoterToken(request: NextRequest): { token: string; isNew: boolean } {
+  const token = request.cookies.get(VOTER_COOKIE)?.value;
+  if (token && OWNER_TOKEN_PATTERN.test(token)) return { token, isNew: false };
+  return { token: newOwnerToken(), isNew: true };
+}
+
+export function setVoterCookie(response: NextResponse, token: string) {
+  response.cookies.set(VOTER_COOKIE, token, { ...cookieOptions, maxAge: OWNER_MAX_AGE });
+}
+
 export function envInt(name: string, fallback: number): number {
   const n = Number(process.env[name]);
   return Number.isInteger(n) && n > 0 ? n : fallback;

@@ -26,7 +26,15 @@ const g = globalThis as unknown as {
   __jawirMemoryStore?: JawirTagItem[];
   __jawirCoffeeVotes?: Set<string>;
   __jawirCoffeeLog?: { ipHash: string; at: number }[];
+  __jawirLastNumber?: number;
 };
+
+// Mirrors the database counter: only grows, so deleting the newest pin never frees its number.
+export function nextMemoryJawirNumber(): number {
+  const max = memoryStore.reduce((m, t) => Math.max(m, t.jawirNumber), 0);
+  g.__jawirLastNumber = Math.max(g.__jawirLastNumber ?? 0, max) + 1;
+  return g.__jawirLastNumber;
+}
 
 export const memoryStore: JawirTagItem[] = (g.__jawirMemoryStore ??= [
   {
