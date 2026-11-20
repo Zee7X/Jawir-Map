@@ -200,7 +200,7 @@ export default function JawirIdCardModal({ isOpen, onClose, tag, isNewCreation =
 
   return (
     <Dossier
-      title={isNewCreation ? 'Paspor Panjenengan sampun medal' : 'KTP Jawirku'}
+      title={isNewCreation ? 'Paspor Panjenengan sampun medal' : 'Paspor Jawirku'}
       subtitle="Simpen kertune, pamerke neng Story. Ben kanca-kancamu iri."
       onClose={onClose}
       maxWidth="sm:max-w-[460px]"

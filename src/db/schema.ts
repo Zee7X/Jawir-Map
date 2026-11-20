@@ -13,7 +13,7 @@ export const jawirTags = mysqlTable(
   'jawir_tags',
   {
     id: varchar('id', { length: 36 }).primaryKey(), // UUID v4
-    jawirNumber: int('jawir_number').notNull(), // Nomor urut KTP Jawir (#1, #2, dst), unik (idx_jawir_number), dihitung MAX+1 saat insert
+    jawirNumber: int('jawir_number').notNull(), // Nomor urut Paspor Jawir (#1, #2, dst), unik (idx_jawir_number), diambil dari jawir_counters
     nickname: varchar('nickname', { length: 40 }).notNull(),
     statusTag: varchar('status_tag', { length: 120 }).notNull(),
     category: varchar('category', { length: 25 }).notNull().default('eksis'),

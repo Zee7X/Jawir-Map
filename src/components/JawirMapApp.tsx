@@ -268,7 +268,7 @@ export default function JawirMapApp({ initialTagId }: { initialTagId?: string })
     setFlyToTarget({ lat: newTag.lat, lng: newTag.lng, zoom: 15 });
     setPopupAfterClose(newTag);
 
-    // Automatically trigger KTP Jawir Digital modal with confetti celebration!
+    // Automatically trigger the Paspor Jawir modal with confetti celebration!
     setIsNewCreation(true);
     setIdCardNote(null);
     setIsIdCardOpen(true);
@@ -385,7 +385,7 @@ export default function JawirMapApp({ initialTagId }: { initialTagId?: string })
         onSelectTagForLine={selectTag}
       />
 
-      {/* Bottom Floating Action Bar with Radar & KTP Button */}
+      {/* Bottom Floating Action Bar with Radar & Paspor Button */}
       <BottomActionBar
         userTag={userTag}
         radarInfo={radarInfo}
