@@ -68,6 +68,7 @@ Begini tampilan link pin saat dibagikan ke WhatsApp, X, atau Telegram:
 - **Satu orang, satu pin.** Mau ganti? Hapus pinmu dari menu **Paspor Jawirku**, lalu pasang lagi.
 - **Peta bersih dari sampah.** Nama dan semboyan otomatis ditolak kalau berisi link, nomor HP, akun medsos, promosi judol, narkoba, SARA, atau kata kasar, termasuk yang ditulis dengan trik huruf seperti `4nj1ng` atau `a.s.u`.
 - **Bisa dilaporkan.** Pin yang tidak pantas bisa dilaporkan dari popup-nya. Kalau tiga orang berbeda melapor, pin itu otomatis disembunyikan sampai diperiksa admin.
+- **Dua bahasa.** Bahasa utamanya Jawa ngoko, tapi tombol **ID** di pojok kanan atas mengganti seluruh tampilan ke Bahasa Indonesia. Pilihannya diingat di browser.
 - **Tanpa akun.** Tidak perlu daftar atau login. Data perangkat dan IP hanya disimpan dalam bentuk hash.
 
 ## Untuk developer

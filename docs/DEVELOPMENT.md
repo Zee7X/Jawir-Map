@@ -52,6 +52,10 @@ Nomor Jawir diambil dari baris `jawir_number` di `jawir_counters` yang hanya nai
 - Setelah `REPORT_HIDE_THRESHOLD` browser berbeda melapor, kolom `jawir_tags.hidden_at` diisi. Pin itu hilang dari peta, `/p/<id>`, gambar OG, dan tidak bisa dititipi kopi. Pemiliknya tetap melihat pinnya, dengan catatan bahwa pinnya sedang disembunyikan.
 - `/admin` (dilindungi `ADMIN_PASSWORD`, cookie sesi httpOnly `SameSite=Strict`, tidak diindeks) menampilkan pin yang dilaporkan, pin yang disembunyikan, dan semua pin. Admin bisa menyembunyikan, menampilkan lagi (sekaligus menghapus laporannya), atau menghapus pin.
 
+## Bahasa
+
+Teks UI ditulis dalam bahasa Jawa dan dipakai sebagai kunci. `src/lib/i18n.tsx` menyediakan `useLang()` dengan `t(jv, vars)` untuk teks UI dan `tm(msg)` untuk pesan dari API. Terjemahan Indonesia ada di `src/lib/i18n/id-*.ts` (per area UI), dan pesan API yang berisi angka ada di `id-patterns.ts`. Teks yang belum ada di kamus tampil dalam bahasa Jawa, jadi tidak pernah kosong. Nama dan semboyan pin buatan pengguna tidak diterjemahkan.
+
 ## Analytics
 
 Vercel Web Analytics (`@vercel/analytics`) dipasang di `layout.tsx`. Analytics ini tanpa cookie dan baru mencatat setelah Web Analytics diaktifkan di dashboard Vercel (tab **Analytics → Enable**).

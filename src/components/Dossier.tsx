@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef } from 'react';
 import { X } from 'lucide-react';
+import { useLang } from '@/lib/i18n';
 
 interface DossierProps {
   title: string;
@@ -13,6 +14,7 @@ interface DossierProps {
 
 // Shared dialog shell: bottom sheet on phones, centered document on desktop, Escape closes.
 export default function Dossier({ title, subtitle, onClose, maxWidth = 'sm:max-w-lg', children }: DossierProps) {
+  const { t } = useLang();
   const closeRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
@@ -44,7 +46,7 @@ export default function Dossier({ title, subtitle, onClose, maxWidth = 'sm:max-w
           <button
             ref={closeRef}
             onClick={onClose}
-            aria-label="Tutup"
+            aria-label={t('Tutup')}
             className="w-11 h-11 shrink-0 flex items-center justify-center rounded-md text-ink-soft hover:text-ink hover:bg-parchment-deep transition"
           >
             <X className="w-5 h-5" />
