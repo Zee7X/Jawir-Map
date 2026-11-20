@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { db, rawClient, isDbConfigured, ensureTable } from '@/db';
+import { db, rawClient, isDbConfigured, ensureTable, allocateJawirNumber } from '@/db';
 import { jawirTags } from '@/db/schema';
 import { and, eq, count, sql } from 'drizzle-orm';
 import {
@@ -9,7 +9,7 @@ import {
   TagCategory,
   TrahType,
 } from '@/lib/geo';
-import { memoryStore, type JawirTagItem, type PublicTag } from '@/lib/memoryStore';
+import { memoryStore, nextMemoryJawirNumber, type JawirTagItem, type PublicTag } from '@/lib/memoryStore';
 import { hashString } from '@/lib/hash';
 import { isDuplicateOnKey } from '@/lib/dbErrors';
 import { isCleanText } from '@/lib/filter';
@@ -170,14 +170,16 @@ export async function POST(request: NextRequest) {
     let assignedJawirNumber = 1;
 
     if (isDbConfigured && db) {
-      // MAX+1 is computed inside the INSERT; concurrent inserts collide on idx_jawir_number and retry.
+      // The number comes from a counter that never goes down, so a deleted pin's number is never handed out again.
+      // idx_jawir_number still guards uniqueness; a collision (should not happen) just draws the next number.
       let assigned = false;
       for (let attempt = 0; attempt < MAX_NUMBER_RETRIES && !assigned; attempt++) {
+        const jawirNumber = await allocateJawirNumber();
         try {
           await rawClient!.execute(
             `INSERT INTO jawir_tags
                (id, nickname, status_tag, category, trah, region_status, lat, lng, distance_km, coffee_count, device_hash, ip_hash, owner_hash, jawir_number)
-             SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, COALESCE(MAX(jawir_number), 0) + 1 FROM jawir_tags`,
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?)`,
             [
               id,
               nickname.trim(),
@@ -191,6 +193,7 @@ export async function POST(request: NextRequest) {
               deviceHash,
               ipHash,
               ownerHash,
+              jawirNumber,
             ]
           );
           assigned = true;
@@ -211,7 +214,7 @@ export async function POST(request: NextRequest) {
       }
     } else {
       if (memoryStore.some((item) => item.id === id)) return alreadySubmittedResponse();
-      assignedJawirNumber = memoryStore.reduce((max, t) => Math.max(max, t.jawirNumber), 0) + 1;
+      assignedJawirNumber = nextMemoryJawirNumber();
       memoryStore.unshift({
         id,
         jawirNumber: assignedJawirNumber,

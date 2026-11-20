@@ -73,6 +73,15 @@ async function initSchema(client: NonNullable<typeof rawClient>): Promise<void> 
     );
   `);
 
+  // Monotonic counters; see allocateJawirNumber.
+  await client.execute(`
+    CREATE TABLE IF NOT EXISTS jawir_counters (
+      name VARCHAR(32) PRIMARY KEY,
+      value INT NOT NULL
+    );
+  `);
+  await client.execute(`INSERT IGNORE INTO jawir_counters (name, value) VALUES ('jawir_number', 0)`);
+
   const inList = TABLES.map((t) => `'${t}'`).join(', ');
   const columns = (await client.execute(
     `SELECT TABLE_NAME AS t, COLUMN_NAME AS c FROM information_schema.COLUMNS
@@ -86,14 +95,15 @@ async function initSchema(client: NonNullable<typeof rawClient>): Promise<void> 
   const haveColumn = new Set(columns.map((r) => `${r.t}.${r.c}`.toLowerCase()));
   const haveIndex = new Set(indexes.map((r) => `${r.t}.${r.i}`.toLowerCase()));
 
+  // Several cold instances can run this at once; whoever loses the race sees "already done" errors, which are fine.
   for (const [table, column, definition] of COLUMN_MIGRATIONS) {
     if (haveColumn.has(`${table}.${column}`)) continue;
-    await client.execute(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+    await alterTolerating(client, `ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`, [ER_DUP_FIELDNAME]);
   }
   for (const [table, index, clause] of INDEX_MIGRATIONS) {
     if (haveIndex.has(`${table}.${index}`)) continue;
     try {
-      await client.execute(`ALTER TABLE ${table} ${clause}`);
+      await alterTolerating(client, `ALTER TABLE ${table} ${clause}`, [ER_DUP_KEYNAME]);
     } catch (err) {
       console.error(`Could not add index ${table}.${index}:`, err);
     }
@@ -101,10 +111,55 @@ async function initSchema(client: NonNullable<typeof rawClient>): Promise<void> 
   for (const [table, index] of INDEX_DROPS) {
     if (!haveIndex.has(`${table}.${index}`)) continue;
     try {
-      await client.execute(`ALTER TABLE ${table} DROP INDEX ${index}`);
+      await alterTolerating(client, `ALTER TABLE ${table} DROP INDEX ${index}`, [ER_CANT_DROP_FIELD_OR_KEY]);
     } catch (err) {
       console.error(`Could not drop index ${table}.${index}:`, err);
     }
+  }
+}
+
+const ER_DUP_FIELDNAME = 1060;
+const ER_DUP_KEYNAME = 1061;
+const ER_CANT_DROP_FIELD_OR_KEY = 1091;
+
+// The serverless driver wraps MySQL errors as "Execute SQL fail: Error 1060 (42S21): ...".
+function mysqlErrorCode(err: unknown): number | null {
+  const e = err as { message?: string; details?: { message?: string } };
+  const m = `${e?.message ?? ''} ${e?.details?.message ?? ''}`.match(/Error (\d{4})/);
+  return m ? Number(m[1]) : null;
+}
+
+async function alterTolerating(client: NonNullable<typeof rawClient>, sql: string, okCodes: number[]) {
+  try {
+    await client.execute(sql);
+  } catch (err) {
+    const code = mysqlErrorCode(err);
+    if (code === null || !okCodes.includes(code)) throw err;
+  }
+}
+
+/**
+ * Next Jawir number, never reused: a counter row that only grows, so deleting the highest pin does not
+ * hand its number to the next person. GREATEST() lifts the counter to the current maximum on its first use
+ * (tables from before the counter existed) and self-heals if it ever falls behind.
+ */
+export async function allocateJawirNumber(): Promise<number> {
+  if (!rawClient) throw new Error('Database is not configured');
+  const tx = await rawClient.begin();
+  try {
+    await tx.execute(
+      `UPDATE jawir_counters
+         SET value = GREATEST(value, (SELECT COALESCE(MAX(jawir_number), 0) FROM jawir_tags)) + 1
+       WHERE name = 'jawir_number'`
+    );
+    const rows = (await tx.execute(`SELECT value FROM jawir_counters WHERE name = 'jawir_number'`)) as { value: number | string }[];
+    await tx.commit();
+    const value = Number(rows[0]?.value);
+    if (!Number.isInteger(value) || value < 1) throw new Error('Jawir counter returned no value');
+    return value;
+  } catch (err) {
+    await tx.rollback().catch(() => {});
+    throw err;
   }
 }
 

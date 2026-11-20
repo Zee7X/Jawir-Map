@@ -45,6 +45,7 @@ export const jawirCoffeeVotes = mysqlTable(
   'jawir_coffee_votes',
   {
     tagId: varchar('tag_id', { length: 36 }).notNull(),
+    // Voter identity: hash of the per-browser `jawir_voter` cookie (older votes hold a fingerprint hash).
     deviceHash: varchar('device_hash', { length: 64 }).notNull(),
     ipHash: varchar('ip_hash', { length: 64 }), // for the per-IP hourly limit; NULL on older votes
     createdAt: timestamp('created_at').defaultNow().notNull(),
@@ -57,3 +58,9 @@ export const jawirCoffeeVotes = mysqlTable(
 
 export type JawirTag = typeof jawirTags.$inferSelect;
 export type NewJawirTag = typeof jawirTags.$inferInsert;
+
+// Counters that only grow (row 'jawir_number'), so a deleted pin's number is never reissued.
+export const jawirCounters = mysqlTable('jawir_counters', {
+  name: varchar('name', { length: 32 }).primaryKey(),
+  value: int('value').notNull(),
+});
