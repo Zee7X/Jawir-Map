@@ -38,7 +38,7 @@ Nomor Jawir diambil dari baris `jawir_number` di `jawir_counters` yang hanya nai
 
 ## Identitas pemilik pin dan suara kopi
 
-- Saat pin dibuat, server memberi token acak lewat cookie `jawir_owner` (httpOnly, 400 hari, diperpanjang setiap kunjungan). Database hanya menyimpan hash-nya. Cookie inilah yang menentukan "pinku": KTP, hapus pin, dan larangan titip kopi ke pin sendiri.
+- Saat pin dibuat, server memberi token acak lewat cookie `jawir_owner` (httpOnly, 400 hari, diperpanjang setiap kunjungan). Database hanya menyimpan hash-nya. Cookie inilah yang menentukan "pinku": Paspor Jawirku, hapus pin, dan larangan titip kopi ke pin sendiri.
 - Suara kopi memakai cookie `jawir_voter` (httpOnly, satu per browser), sehingga dua HP dengan fingerprint sama tetap punya suara masing-masing.
 - Fingerprint perangkat (FingerprintJS) tidak lagi membatasi pembuatan pin, karena HP dengan model sama sering punya fingerprint sama. Fingerprint hanya dipakai untuk mengenali pin lama yang belum punya `owner_hash`.
 - Form pin mengirim `submissionId` acak yang dipakai sebagai id pin, jadi tap ganda atau kirim ulang dari form yang sama tidak membuat pin kedua.

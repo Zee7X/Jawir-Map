@@ -64,7 +64,7 @@ Begini tampilan link pin saat dibagikan ke WhatsApp, X, atau Telegram:
 ## Aman dan sopan
 
 - **Lokasimu disamarkan.** Titikmu digeser acak beberapa ratus meter, jadi ibu kos tidak bisa melacakmu.
-- **Satu orang, satu pin.** Mau ganti? Hapus pinmu dari menu **KTP Jawirku**, lalu pasang lagi.
+- **Satu orang, satu pin.** Mau ganti? Hapus pinmu dari menu **Paspor Jawirku**, lalu pasang lagi.
 - **Peta bersih dari sampah.** Nama dan semboyan otomatis ditolak kalau berisi link, nomor HP, akun medsos, promosi judol, narkoba, SARA, atau kata kasar, termasuk yang ditulis dengan trik huruf seperti `4nj1ng` atau `a.s.u`.
 - **Tanpa akun.** Tidak perlu daftar atau login. Data perangkat dan IP hanya disimpan dalam bentuk hash.
 

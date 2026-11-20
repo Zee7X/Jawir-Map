@@ -20,7 +20,7 @@ export const metadata: Metadata = {
     'Jawir',
     'Perantau Jawa',
     'Wong Jawa',
-    'KTP Jawir Digital',
+    'Paspor Jawir Digital',
     'Gunung Lawu Titik 0',
     'Sunda Empire',
     'Peta Perantau',

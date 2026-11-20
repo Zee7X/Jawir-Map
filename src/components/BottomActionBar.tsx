@@ -138,7 +138,7 @@ export default function BottomActionBar({
                 className="flex items-center gap-2 h-11 px-4 rounded bg-terra hover:bg-terra-deep text-white text-sm font-bold transition"
               >
                 <IdCard className="w-4 h-4 shrink-0" />
-                <span>KTP Jawirku</span>
+                <span>Paspor Jawirku</span>
               </button>
               <button onClick={onFlyToMyTag} className={QUIET} title="Menyang titikku">
                 <Crosshair className="w-4 h-4 text-moss shrink-0" />
