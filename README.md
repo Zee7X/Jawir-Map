@@ -1,3 +1,5 @@
+[![GitGotchi](https://gitgochi.lumelo.my.id/api/badge/zee7x/jawir-map.svg)](https://gitgochi.lumelo.my.id/pet/zee7x/jawir-map)
+
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
 ## Getting Started
