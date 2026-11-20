@@ -32,6 +32,10 @@ const INDEX_MIGRATIONS: [table: string, index: string, clause: string][] = [
   ['jawir_coffee_votes', 'idx_vote_ip', 'ADD INDEX idx_vote_ip (ip_hash, created_at)'],
 ];
 
+// Indexes from older versions that must go. idx_unique_device blocked every second phone whose fingerprint
+// collides with an existing pin. Once duplicate device hashes exist it cannot be re-added without cleanup.
+const INDEX_DROPS: [table: string, index: string][] = [['jawir_tags', 'idx_unique_device']];
+
 async function initSchema(client: NonNullable<typeof rawClient>): Promise<void> {
   await client.execute(`
     CREATE TABLE IF NOT EXISTS jawir_tags (
@@ -50,7 +54,6 @@ async function initSchema(client: NonNullable<typeof rawClient>): Promise<void> 
       ip_hash VARCHAR(64) NOT NULL,
       owner_hash VARCHAR(64) NULL,
       created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      UNIQUE KEY idx_unique_device (device_hash),
       UNIQUE KEY idx_jawir_number (jawir_number),
       KEY idx_coords (lat, lng),
       KEY idx_distance (distance_km),
@@ -93,6 +96,14 @@ async function initSchema(client: NonNullable<typeof rawClient>): Promise<void> 
       await client.execute(`ALTER TABLE ${table} ${clause}`);
     } catch (err) {
       console.error(`Could not add index ${table}.${index}:`, err);
+    }
+  }
+  for (const [table, index] of INDEX_DROPS) {
+    if (!haveIndex.has(`${table}.${index}`)) continue;
+    try {
+      await client.execute(`ALTER TABLE ${table} DROP INDEX ${index}`);
+    } catch (err) {
+      console.error(`Could not drop index ${table}.${index}:`, err);
     }
   }
 }

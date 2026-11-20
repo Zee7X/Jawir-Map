@@ -27,6 +27,9 @@ const MAX_NUMBER_RETRIES = 5;
 const OWN_PIN_MESSAGE = 'Woi, jatahmu mung sepisan salawase urip! Ojo srakah kaya pejabat.';
 const DEVICE_TAKEN_MESSAGE =
   'Piranti iki wis tau nancep pin. Siji piranti mung oleh siji pin, lur. Yen iki pinmu, bukak saka browser sing biyen.';
+const ALREADY_SUBMITTED_MESSAGE = 'Pinmu wis kekirim, lur. Tutup terus bukak maneh petane.';
+// Client-generated per form session. Used as the pin id, so a double submit collides on the primary key.
+const SUBMISSION_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 const IP_LIMIT_MESSAGE = `Alon-alon, lur. Siji jaringan mung oleh nancep ${MAX_PINS_PER_IP_PER_DAY} pin sedina.`;
 const VALID_CATEGORIES: TagCategory[] = ['pejuang_rupiah', 'cari_kawan', 'butuh_info', 'eksis'];
 const VALID_TRAHS: TrahType[] = ['mataraman', 'ngapak', 'arekan', 'pantura', 'rantau_lahir', 'simpatisan'];
@@ -36,9 +39,14 @@ function ownPinResponse(tag: PublicTag) {
   return NextResponse.json({ success: false, message: OWN_PIN_MESSAGE, existingTag: tag }, { status: 409 });
 }
 
-// Another pin shares this device fingerprint. Fingerprints collide (same phone model), so its data stays private.
+// Only reachable while the legacy idx_unique_device still exists (its DROP failed); its data stays private.
 function deviceTakenResponse() {
   return NextResponse.json({ success: false, message: DEVICE_TAKEN_MESSAGE }, { status: 409 });
+}
+
+// The same form submission already created a pin (double tap, retry). The earlier response carried its cookie.
+function alreadySubmittedResponse() {
+  return NextResponse.json({ success: false, message: ALREADY_SUBMITTED_MESSAGE }, { status: 409 });
 }
 
 export async function GET() {
@@ -61,7 +69,7 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { nickname, statusTag, category, trah, lat, lng, fingerprintId } = body;
+    const { nickname, statusTag, category, trah, lat, lng, fingerprintId, submissionId } = body;
 
     if (!nickname || typeof nickname !== 'string' || nickname.trim().length < 2 || nickname.trim().length > 40) {
       return NextResponse.json(
@@ -128,15 +136,9 @@ export async function POST(request: NextRequest) {
       if (mine) return ownPinResponse(mine);
     }
 
+    // Fingerprints collide (same phone model), so they no longer gate pin creation; the owner cookie and IP cap do.
     if (isDbConfigured && db) {
       await ensureTable();
-
-      const existing = await db
-        .select({ id: jawirTags.id })
-        .from(jawirTags)
-        .where(eq(jawirTags.deviceHash, deviceHash))
-        .limit(1);
-      if (existing.length > 0) return deviceTakenResponse();
 
       const [recent] = await db
         .select({ val: count() })
@@ -146,8 +148,6 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ success: false, message: IP_LIMIT_MESSAGE }, { status: 429 });
       }
     } else {
-      if (memoryStore.some((item) => item.deviceHash === deviceHash)) return deviceTakenResponse();
-
       const since = Date.now() - 24 * 60 * 60 * 1000;
       const recent = memoryStore.filter(
         (item) => item.ipHash === ipHash && new Date(item.createdAt).getTime() >= since
@@ -161,7 +161,8 @@ export async function POST(request: NextRequest) {
     const fuzzedLng = fuzzCoordinate(numLng);
     const distanceKm = calculateDistanceFromLawu(fuzzedLat, fuzzedLng);
     const regionStatus = detectRegionStatus(fuzzedLat, fuzzedLng);
-    const id = randomUUID();
+    const normalizedSubmissionId = typeof submissionId === 'string' ? submissionId.toLowerCase() : '';
+    const id = SUBMISSION_ID_PATTERN.test(normalizedSubmissionId) ? normalizedSubmissionId : randomUUID();
     const nowIso = new Date().toISOString();
     const ownerToken = newOwnerToken();
     const ownerHash = hashString(ownerToken);
@@ -194,7 +195,7 @@ export async function POST(request: NextRequest) {
           );
           assigned = true;
         } catch (err) {
-          // A concurrent request from the same device won the race.
+          if (isDuplicateOnKey(err, 'PRIMARY')) return alreadySubmittedResponse();
           if (isDuplicateOnKey(err, 'idx_unique_device')) return deviceTakenResponse();
           if (!isDuplicateOnKey(err, 'idx_jawir_number')) throw err;
         }
@@ -209,6 +210,7 @@ export async function POST(request: NextRequest) {
         return response;
       }
     } else {
+      if (memoryStore.some((item) => item.id === id)) return alreadySubmittedResponse();
       assignedJawirNumber = memoryStore.reduce((max, t) => Math.max(max, t.jawirNumber), 0) + 1;
       memoryStore.unshift({
         id,

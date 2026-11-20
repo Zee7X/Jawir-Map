@@ -33,7 +33,6 @@ export const jawirTags = mysqlTable(
     createdAt: timestamp('created_at').defaultNow().notNull(),
   },
   (table) => ({
-    deviceHashIdx: uniqueIndex('idx_unique_device').on(table.deviceHash),
     jawirNumberIdx: uniqueIndex('idx_jawir_number').on(table.jawirNumber),
     coordsIdx: index('idx_coords').on(table.lat, table.lng),
     distanceIdx: index('idx_distance').on(table.distanceKm),

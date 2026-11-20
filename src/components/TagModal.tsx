@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { MapPin, Navigation, Loader2 } from 'lucide-react';
 import Dossier from './Dossier';
 import { getFingerprintId } from '@/lib/fingerprint';
@@ -75,6 +75,13 @@ export default function TagModal({
       isMounted = false;
     };
   }, []);
+
+  // One id per time the form is opened, sent with every submit from it. The server uses it as the pin id,
+  // so a double tap or retry cannot create a second pin whose owner cookie gets overwritten.
+  const submissionIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (isOpen) submissionIdRef.current = null;
+  }, [isOpen]);
 
   // Live content check, debounced; empty fields stay quiet (length rules run on submit).
   const [nickError, setNickError] = useState<string | null>(null);
@@ -162,6 +169,8 @@ export default function TagModal({
     }
 
     setIsSubmitting(true);
+    // randomUUID needs a secure context (https or localhost); without it the server picks the id.
+    submissionIdRef.current ??= typeof crypto.randomUUID === 'function' ? crypto.randomUUID() : null;
 
     try {
       const res = await fetch('/api/tags', {
@@ -177,6 +186,7 @@ export default function TagModal({
           lat: coords.lat,
           lng: coords.lng,
           fingerprintId,
+          submissionId: submissionIdRef.current ?? undefined,
         }),
       });
 

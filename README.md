@@ -9,7 +9,7 @@ Live: <https://jawirmap.lumelo.my.id>
 ## Fitur
 
 - Peta dunia (Leaflet + Esri World Topo) dengan pin ter-cluster, benang merah ke Lawu, dan 4 situs legenda (NPC).
-- Satu perangkat satu pin. Lokasi digeser acak ±250–650 m demi privasi.
+- Satu browser satu pin (lewat cookie pemilik), maksimal 10 pin per IP per hari. Lokasi digeser acak ±250–650 m demi privasi.
 - Paspor Jawir (PNG untuk Story), klasemen, sensus trah dan wilayah, "Titip kopi", radar sedulur radius 3 km.
 - Link `/?tag=<id>` menampilkan preview kartu paspor di WhatsApp, X, Telegram (gambar dari `/og?tag=<id>`).
 - Pemilik pin bisa menghapus pinnya sendiri dari "KTP Jawirku".
@@ -42,11 +42,11 @@ Membuat `HASH_SALT`: `node -e "console.log(require('crypto').randomBytes(32).toS
 
 ## Database
 
-Tabel `jawir_tags` dan `jawir_coffee_votes` dibuat otomatis pada request pertama di setiap instance server (`ensureTable` di `src/db/index.ts`). Tabel dari versi lama hanya ditambah kolom atau indeks yang belum ada (`owner_hash`, `ip_hash`, dan lainnya). Skema Drizzle ada di `src/db/schema.ts`.
+Tabel `jawir_tags` dan `jawir_coffee_votes` dibuat otomatis pada request pertama di setiap instance server (`ensureTable` di `src/db/index.ts`). Tabel dari versi lama hanya ditambah kolom atau indeks yang belum ada (`owner_hash`, `ip_hash`, dan lainnya), dan unique index lama `idx_unique_device` dihapus. Penghapusan ini praktis permanen: begitu ada dua pin dengan `device_hash` sama, index itu tidak bisa dipasang lagi tanpa membersihkan data. Skema Drizzle ada di `src/db/schema.ts`.
 
 ## Identitas pemilik pin
 
-Saat pin dibuat, server memberi token acak lewat cookie `jawir_owner` (httpOnly, 400 hari, diperpanjang setiap kunjungan). Database hanya menyimpan hash-nya. Cookie inilah yang menentukan "pinku": KTP, hapus pin, dan larangan titip kopi ke pin sendiri. Fingerprint perangkat hanya dipakai untuk batas satu pin per perangkat, dan data pin orang lain tidak pernah dikirim ke perangkat yang kebetulan punya fingerprint sama.
+Saat pin dibuat, server memberi token acak lewat cookie `jawir_owner` (httpOnly, 400 hari, diperpanjang setiap kunjungan). Database hanya menyimpan hash-nya. Cookie inilah yang menentukan "pinku": KTP, hapus pin, dan larangan titip kopi ke pin sendiri. Fingerprint perangkat tidak lagi membatasi pembuatan pin, karena HP dengan model sama sering punya fingerprint sama. Fingerprint masih dipakai untuk suara kopi (satu suara per perangkat per pin), sehingga dua HP dengan fingerprint sama masih dihitung sebagai satu pemilih. Form pin mengirim `submissionId` acak yang dipakai sebagai id pin, jadi tap ganda atau kirim ulang dari form yang sama tidak membuat pin kedua.
 
 ## Deploy ke Vercel
 
