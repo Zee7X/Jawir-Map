@@ -1,11 +1,25 @@
 import type { Metadata, Viewport } from 'next';
-import { Fraunces, Courier_Prime } from 'next/font/google';
+import localFont from 'next/font/local';
 import { SITE_URL, SITE_NAME, SITE_TAGLINE, SITE_DESCRIPTION } from '@/lib/site';
 import './globals.css';
 
 // Fraunces: old-style serif for the logbook voice. Courier Prime: typewriter for document fields & MRZ.
-const display = Fraunces({ subsets: ['latin'], variable: '--font-display', weight: ['600', '800'] });
-const typewriter = Courier_Prime({ subsets: ['latin'], variable: '--font-type', weight: ['400', '700'] });
+// Self-hosted (latin subset from Google Fonts, OFL) so builds never depend on fetching fonts.google.com.
+// Fraunces is a variable font, so one file covers both weights in use.
+const display = localFont({
+  src: './fonts/fraunces-latin.woff2',
+  weight: '600 800',
+  variable: '--font-display',
+  display: 'swap',
+});
+const typewriter = localFont({
+  src: [
+    { path: './fonts/courier-prime-400-latin.woff2', weight: '400', style: 'normal' },
+    { path: './fonts/courier-prime-700-latin.woff2', weight: '700', style: 'normal' },
+  ],
+  variable: '--font-type',
+  display: 'swap',
+});
 
 const TITLE = `${SITE_NAME} · ${SITE_TAGLINE}`;
 const OG_IMAGE = { url: '/og', width: 1200, height: 630, alt: `${SITE_NAME}: ${SITE_TAGLINE}` };
