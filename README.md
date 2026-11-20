@@ -2,61 +2,58 @@
 
 # Jawir Map
 
-**Peta Sedulur Jawir Sedonya.** Tancapkan satu pin di peta dunia, dapatkan Paspor Jawir digital, dan lihat seberapa jauh kamu dari Titik 0 Puncak Gunung Lawu.
+**Peta Sedulur Jawir Sedonya.** Sedulur Jawa ada di mana-mana: di Toronto, Shinjuku, IKN, sampai kos-kosan di Jaksel. Jawir Map mengumpulkan mereka di satu peta dunia. Tancapkan satu pin, dapatkan Paspor Jawir, dan lihat seberapa jauh kamu dari Titik 0 di Puncak Gunung Lawu.
 
-Live: <https://jawirmap.lumelo.my.id>
+**👉 [jawirmap.lumelo.my.id](https://jawirmap.lumelo.my.id)**
 
-## Fitur
+[![Jawir Map](https://jawirmap.lumelo.my.id/og)](https://jawirmap.lumelo.my.id)
 
-- Peta dunia (Leaflet + Esri World Topo) dengan pin ter-cluster, benang merah ke Lawu, dan 4 situs legenda (NPC).
-- Satu browser satu pin (lewat cookie pemilik), maksimal 10 pin per IP per hari. Lokasi digeser acak ±250–650 m demi privasi.
-- Paspor Jawir (PNG untuk Story), klasemen, sensus trah dan wilayah, "Titip kopi", radar sedulur radius 3 km.
-- Link `/p/<id>` menampilkan preview kartu paspor di WhatsApp, X, Telegram (gambar dari `/og?tag=<id>`). Halaman utama tetap statis; link lama `/?tag=<id>` masih dibuka di browser.
-- Pemilik pin bisa menghapus pinnya sendiri dari "KTP Jawirku".
+## Kenapa Lawu?
 
-## Stack
+Gunung Lawu (3.265 mdpl) berdiri tepat di perbatasan Karanganyar (Jateng) dan Magetan (Jatim). Jaraknya ke sedulur Ngapak di barat dan ke sedulur Arekan di timur kurang lebih sama. Lawu juga dikenal sebagai petilasan Prabu Brawijaya V, jembatan cerita dari Majapahit ke Mataram.
 
-Next.js 14 (App Router), React 18, Tailwind CSS, Drizzle ORM, TiDB Cloud Serverless (`@tidbcloud/serverless`, lewat HTTPS sehingga cocok untuk serverless).
+Karena itu Lawu jadi **Titik 0**. Setiap pin di peta ditarik benang merah ke puncaknya, dan jarak setiap Jawir dihitung dari sana.
 
-## Development
+## Cara main
 
-```bash
-npm install
-cp .env.example .env.local   # isi DATABASE_URL dan HASH_SALT, atau kosongkan DATABASE_URL untuk mode demo
-npm run dev
-```
+1. **Tancepke pin.** Isi nama panggilan, pilih trah asal dan sedang ngapain, lalu tulis semboyan singkat. Lokasi bisa diambil dari GPS atau dipilih langsung di peta.
+2. **Terima Paspor Jawir.** Paspor Diplomatik digital langsung terbit, lengkap dengan nomor urut Jawir, kasta wilayah, jarak dari Lawu, cap Juru Kunci Gunung Lawu, dan kode MRZ ala paspor sungguhan. Simpan sebagai PNG untuk Story.
+3. **Pamerkan.** Bagikan link pinmu. Di WhatsApp, X, dan Telegram link itu muncul sebagai kartu paspor lengkap dengan nama, semboyan, dan jarakmu.
+4. **Jelajahi.** Klik pin sedulur lain untuk membaca semboyannya dan melihat rute benang merahnya ke Lawu. Bisa juga terbang ke rekor paling jauh, atau tekan **Ngacak** untuk mampir ke Jawir acak.
 
-Tanpa `DATABASE_URL`, API memakai data demo di memori yang hilang setiap restart.
+## Isi peta
 
-## Environment variables
+**Kasta wilayah**, ditentukan otomatis dari lokasi pin:
 
-| Nama | Wajib | Keterangan |
-| --- | --- | --- |
-| `DATABASE_URL` | Ya (produksi) | Connection string TiDB, harus diawali `mysql://`. |
-| `HASH_SALT` | Ya | String acak panjang untuk hash perangkat dan IP. Jangan diganti setelah launch. |
-| `NEXT_PUBLIC_SITE_URL` | Tidak | Default `https://jawirmap.lumelo.my.id`. Dipakai untuk canonical dan preview link. |
-| `MAX_PINS_PER_IP_PER_DAY` | Tidak | Default `10`. |
-| `MAX_COFFEE_PER_IP_PER_HOUR` | Tidak | Default `150`. |
+| Kasta | Wilayah |
+| --- | --- |
+| 🏠 Jawir Kandang | Jateng, DIY, Jatim, Madura. Mulih cukup numpak bis. |
+| 🏕️ Rantau Lv.1 (Sunda Empire) | Jabar, Banten, Jabodetabek. Wis wani adoh saka sambel bawang. |
+| ⛴️ Rantau Nyabrang Pulo | Sumatra, Kalimantan, Sulawesi, Bali, sampai Papua. |
+| 🌍 Cabang Manca Negara | Luar negeri. Mulih kudu nabung setaun. |
 
-Membuat `HASH_SALT`: `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`
+**Trah asal:** ⚔️ Mataraman, 🗣️ Ngapak, 🔥 Arekan & Tapal Kuda, 🌊 Pantura & Muria, 🌱 Lair neng Rantau, dan 🤝 Simpatisan (bukan Jawa, tapi sudah doyan sambal).
 
-## Database
+**Sedang ngapain:** 💼 Nyambut Gawe, ☕ Golek Konco, 🙋 Butuh Info, atau 🗿 Mung Absen.
 
-Tabel `jawir_tags`, `jawir_coffee_votes`, dan `jawir_counters` dibuat otomatis pada request pertama di setiap instance server (`ensureTable` di `src/db/index.ts`). Tabel dari versi lama hanya ditambah kolom atau indeks yang belum ada (`owner_hash`, `ip_hash`, dan lainnya), dan unique index lama `idx_unique_device` dihapus. Penghapusan ini praktis permanen: begitu ada dua pin dengan `device_hash` sama, index itu tidak bisa dipasang lagi tanpa membersihkan data. Nomor Jawir diambil dari baris `jawir_number` di `jawir_counters` yang hanya naik, jadi nomor pin yang dihapus tidak pernah dipakai lagi. Skema Drizzle ada di `src/db/schema.ts`.
+**Situs Legendha.** Ada empat juru kunci misterius yang menunggu disowani: Mbah Bejo di Segitiga Bermuda, Pengurus Cabang Penguin di Antartika, Agen Rahasia Ngapak di Area 51, dan Slamet Sumber Kencono yang nyasar sampai Terminal Pyongyang. Sowan ke mereka untuk dapat cap visa.
 
-## Identitas pemilik pin
+## Interaksi antar sedulur
 
-Saat pin dibuat, server memberi token acak lewat cookie `jawir_owner` (httpOnly, 400 hari, diperpanjang setiap kunjungan). Database hanya menyimpan hash-nya. Cookie inilah yang menentukan "pinku": KTP, hapus pin, dan larangan titip kopi ke pin sendiri. Fingerprint perangkat tidak lagi membatasi pembuatan pin, karena HP dengan model sama sering punya fingerprint sama. Suara kopi memakai cookie `jawir_voter` (httpOnly, satu per browser), sehingga dua HP dengan fingerprint sama tetap punya suara masing-masing. Fingerprint hanya dipakai untuk mengenali pin lama yang belum punya `owner_hash`. Form pin mengirim `submissionId` acak yang dipakai sebagai id pin, jadi tap ganda atau kirim ulang dari form yang sama tidak membuat pin kedua.
+- **☕ Titip kopi.** Kirim kopi virtual ke pin sedulur lain, satu kopi per pin.
+- **🏆 Klasemen.** Ada empat papan: *Paling Adoh* (Penguasa Pojok Donya), *Juru Kunci* (paling dekat kawah Lawu), *Kopi* (Juragan Kopi Sedonya), dan *Sensus Kasta* yang menghitung persebaran trah dan wilayah.
+- **📡 Radar.** Lihat berapa sedulur Jawir dalam radius 3 km dari pinmu, dan siapa yang paling dekat. Siapa tahu bisa ngopi bareng.
 
-## Deploy ke Vercel
+## Aman dan sopan
 
-1. Import repo ini di Vercel (framework Next.js terdeteksi otomatis).
-2. Isi environment variables di atas pada **Project → Settings → Environment Variables**.
-3. Tambahkan domain `jawirmap.lumelo.my.id` di **Project → Settings → Domains**, lalu buat record DNS `CNAME jawirmap` ke nilai yang ditampilkan Vercel.
+- **Lokasimu disamarkan.** Titikmu digeser acak beberapa ratus meter, jadi ibu kos tidak bisa melacakmu.
+- **Satu orang, satu pin.** Mau ganti? Hapus pinmu dari menu **KTP Jawirku**, lalu pasang lagi.
+- **Peta bersih dari sampah.** Nama dan semboyan otomatis ditolak kalau berisi link, nomor HP, akun medsos, promosi judol, narkoba, SARA, atau kata kasar, termasuk yang ditulis dengan trik huruf seperti `4nj1ng` atau `a.s.u`.
+- **Tanpa akun.** Tidak perlu daftar atau login. Data perangkat dan IP hanya disimpan dalam bentuk hash.
 
-Function berjalan di `sin1` (Singapura, lihat `vercel.json`), sama dengan region TiDB, supaya query tidak menyeberang benua.
+## Untuk developer
 
-`GET /api/tags` di-cache CDN 15 detik (`s-maxage=15, stale-while-revalidate=60`), halaman `/p/<id>` 5 menit (ISR), gambar OG 1 jam.
+Cara menjalankan secara lokal, environment variables, database, dan deploy ada di [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
 
 ## Lisensi
 
