@@ -1,5 +1,3 @@
-[![GitGotchi](https://gitgochi.lumelo.my.id/api/badge/zee7x/jawir-map.svg)](https://gitgochi.lumelo.my.id/pet/zee7x/jawir-map)
-
 # Jawir Map
 
 **Peta Sedulur Jawir Sedonya.** Sedulur Jawa ada di mana-mana: di Toronto, Shinjuku, IKN, sampai kos-kosan di Jaksel. Jawir Map mengumpulkan mereka di satu peta dunia. Tancapkan satu pin, dapatkan Paspor Jawir, dan lihat seberapa jauh kamu dari Titik 0 di Puncak Gunung Lawu.
@@ -73,6 +71,12 @@ Begini tampilan link pin saat dibagikan ke WhatsApp, X, atau Telegram:
 ## Untuk developer
 
 Cara menjalankan secara lokal, environment variables, database, dan deploy ada di [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
+
+## Peliharaan repo
+
+Repo ini punya peliharaan dari [GitGotchi](https://gitgochi.lumelo.my.id). Klik badge-nya untuk melihat kondisinya.
+
+[![GitGotchi](https://gitgochi.lumelo.my.id/api/badge/zee7x/jawir-map.svg)](https://gitgochi.lumelo.my.id/pet/zee7x/jawir-map)
 
 ## Lisensi
 
