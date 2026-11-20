@@ -38,6 +38,7 @@ interface FlyToTarget {
 }
 
 export type CoffeeResult = 'sent' | 'already' | 'own' | 'limited' | 'error';
+export type ReportOutcome = { ok: boolean; hidden: boolean; message: string };
 
 export interface PickCenter {
   lat: number;
@@ -54,14 +55,16 @@ interface WorldMapProps {
   onPickCenter: (center: PickCenter) => void;
   onOpenLore: () => void;
   onAddCoffee: (tagId: string) => Promise<CoffeeResult>;
+  onReportPin: (tagId: string, reason: string) => Promise<ReportOutcome>;
   selectedTagForLine: JawirTagData | null;
   onSelectTagForLine: (tag: JawirTagData | null) => void;
 }
 
 const THREAD = '#b91c1c';
 
-// Opening a popup pans it clear of the floating header (top) and action bar (bottom), so its close button stays tappable.
-const POPUP_PAD = { autoPanPaddingTopLeft: [12, 84] as L.PointTuple, autoPanPaddingBottomRight: [12, 96] as L.PointTuple };
+// Room kept free for the floating header (top) and action bar (bottom) when a popup is panned into view.
+const POPUP_SAFE_TOP = 84;
+const POPUP_SAFE_BOTTOM = 96;
 
 const TOPO_URL = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}';
 const WORLD_BOUNDS: L.LatLngBoundsLiteral = [
@@ -360,6 +363,102 @@ function ShareButton({ tagId }: { tagId: string }) {
   );
 }
 
+const REPORT_REASONS: { id: string; label: string }[] = [
+  { id: 'saru', label: 'Saru / kasar' },
+  { id: 'spam', label: 'Spam / judol' },
+  { id: 'sara', label: 'SARA' },
+  { id: 'pribadi', label: 'Data pribadi' },
+  { id: 'liyane', label: 'Liyane' },
+];
+
+const reportedKey = (id: string) => `jawir_reported_${id}`;
+
+// "Laporke": pick a reason, send once. Enough reports from different browsers hide the pin until an admin checks it.
+function ReportButton({ tagId, onReport }: { tagId: string; onReport: WorldMapProps['onReportPin'] }) {
+  const [open, setOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [note, setNote] = useState<string | null>(null);
+  const [done, setDone] = useState(false);
+
+  useEffect(() => {
+    try {
+      if (localStorage.getItem(reportedKey(tagId))) setDone(true);
+    } catch {
+      // storage blocked
+    }
+  }, [tagId]);
+
+  const send = async (reason: string) => {
+    setBusy(true);
+    const r = await onReport(tagId, reason);
+    setBusy(false);
+    setNote(r.message);
+    if (r.ok || /wis tau/.test(r.message)) {
+      setDone(true);
+      setOpen(false);
+      try {
+        localStorage.setItem(reportedKey(tagId), '1');
+      } catch {
+        // storage blocked
+      }
+    }
+  };
+
+  if (done) {
+    return <p className="text-xs text-ink-soft" aria-live="polite">{note ?? 'Kowe wis nglaporke pin iki.'}</p>;
+  }
+
+  return (
+    <div>
+      {!open ? (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            setOpen(true);
+          }}
+          className="min-h-11 -mr-1 px-1 text-sm text-ink-soft underline underline-offset-4 decoration-ink/30 hover:text-stamp hover:decoration-stamp"
+        >
+          Laporke
+        </button>
+      ) : (
+        <div className="rounded border border-stamp/30 bg-[#fdf3f2] p-2.5 space-y-2" role="group" aria-label="Laporke pin iki">
+          <p className="text-xs font-bold text-[#7f1d1d]">Apa sing salah karo pin iki?</p>
+          <div className="flex flex-wrap gap-1.5">
+            {REPORT_REASONS.map((r) => (
+              <button
+                key={r.id}
+                type="button"
+                disabled={busy}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  send(r.id);
+                }}
+                className="min-h-9 px-2.5 rounded border border-stamp/30 bg-white text-xs font-bold text-ink hover:border-stamp disabled:opacity-60"
+              >
+                {r.label}
+              </button>
+            ))}
+          </div>
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-xs text-[#7f1d1d]" aria-live="polite">{note}</p>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setOpen(false);
+              }}
+              className="min-h-9 px-1 text-xs text-ink-soft underline underline-offset-2"
+            >
+              Batal
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function SowanButton({ npc }: { npc: NpcPin }) {
   const [state, setState] = useState<'idle' | 'stamping' | 'done'>('idle');
   const [count, setCount] = useState(0);
@@ -544,6 +643,31 @@ function MapController({
   });
 
   useEffect(() => {
+    // Leaflet auto-pans a popup before React has rendered its content, then skips the second pan once the content
+    // grows, so tall popups ended up under the header. Pan again after the content has painted, top edge first.
+    const onOpen = (e: L.PopupEvent) => {
+      requestAnimationFrame(() =>
+        requestAnimationFrame(() => {
+          const el = e.popup.getElement();
+          if (!el || !map.hasLayer(e.popup)) return;
+          const box = map.getContainer().getBoundingClientRect();
+          const r = el.getBoundingClientRect();
+          const top = r.top - box.top;
+          const bottomGap = box.bottom - r.bottom;
+          let dy = 0;
+          if (top < POPUP_SAFE_TOP) dy = top - POPUP_SAFE_TOP;
+          else if (bottomGap < POPUP_SAFE_BOTTOM) dy = Math.min(POPUP_SAFE_BOTTOM - bottomGap, top - POPUP_SAFE_TOP);
+          if (dy) map.panBy([0, dy], { animate: true, duration: 0.25 });
+        })
+      );
+    };
+    map.on('popupopen', onOpen);
+    return () => {
+      map.off('popupopen', onOpen);
+    };
+  }, [map]);
+
+  useEffect(() => {
     // Leaflet scales the SVG overlay with CSS while zooming, which turns the dotted route into blobs, so hide it until the zoom settles.
     const el = map.getContainer();
     const hide = () => el.classList.add('map-zooming');
@@ -569,12 +693,19 @@ function MapController({
     // Long dives get at least 1.8s so the prefetch can land before the flight ends.
     map.flyTo(dest, target, { duration: Math.min(2.2, Math.max(delta >= 8 ? 1.8 : 0, 1.5 + Math.max(0, delta - 4) * 0.1)) });
 
-    const marker = flyToTarget.tagId === 'lawu' ? lawuRef.current : flyToTarget.tagId ? markerRefs.current[flyToTarget.tagId] : null;
-    if (marker) {
-      // The cluster layer only mounts markers after the move settles, so open the popup then.
+    const id = flyToTarget.tagId;
+    if (id) {
+      // The cluster layer mounts markers in chunks after the move settles, so the target may not be on the map yet.
+      // Re-read the ref and retry for up to ~2 s instead of opening once and silently failing.
+      const markerFor = () => (id === 'lawu' ? lawuRef.current : markerRefs.current[id]);
       let t: ReturnType<typeof setTimeout>;
+      const tryOpen = (left: number) => {
+        const marker = markerFor();
+        if (marker && map.hasLayer(marker)) marker.openPopup();
+        else if (left > 0) t = setTimeout(() => tryOpen(left - 1), 120);
+      };
       const open = () => {
-        t = setTimeout(() => marker.openPopup(), 150);
+        t = setTimeout(() => tryOpen(16), 150);
       };
       map.once('moveend', open);
       return () => {
@@ -596,6 +727,7 @@ export default function WorldMap({
   onPickCenter,
   onOpenLore,
   onAddCoffee,
+  onReportPin,
   selectedTagForLine,
   onSelectTagForLine,
 }: WorldMapProps) {
@@ -671,7 +803,7 @@ export default function WorldMap({
             },
           }}
         >
-          <Popup className="jawir-map-popup" {...POPUP_PAD} eventHandlers={{ remove: () => onSelectTagForLine(null) }}>
+          <Popup className="jawir-map-popup" eventHandlers={{ remove: () => onSelectTagForLine(null) }}>
             <div className="p-4 pr-10 w-[290px] sm:w-[320px] space-y-3 box-border">
               <div>
                 <p className="font-type text-xs text-terra-deep">0 km · {LAWU_CENTER.elevation}</p>
@@ -715,7 +847,7 @@ export default function WorldMap({
                   },
                 }}
               >
-                <Popup className="jawir-map-popup" {...POPUP_PAD} eventHandlers={{ remove: () => clearIfSelected(tag.id) }}>
+                <Popup className="jawir-map-popup" eventHandlers={{ add: () => selectPin(tag), remove: () => clearIfSelected(tag.id) }}>
                   <div className="p-4 w-[290px] sm:w-[320px] space-y-3 box-border">
                     <div className="pr-8">
                       <p className="font-type text-xs text-ink-soft">
@@ -754,6 +886,7 @@ export default function WorldMap({
                       <CoffeeButton tag={tag} onAddCoffee={onAddCoffee} />
                     )}
                     <ShareButton tagId={tag.id} />
+                    {!isUserTag && <ReportButton tagId={tag.id} onReport={onReportPin} />}
                   </div>
                 </Popup>
               </Marker>
@@ -778,7 +911,7 @@ export default function WorldMap({
               },
             }}
           >
-            <Popup className="jawir-map-popup" {...POPUP_PAD} eventHandlers={{ remove: () => clearIfSelected(npc.id) }}>
+            <Popup className="jawir-map-popup" eventHandlers={{ add: () => selectPin(npc), remove: () => clearIfSelected(npc.id) }}>
               <LegendPopupBody npc={npc} />
             </Popup>
           </Marker>

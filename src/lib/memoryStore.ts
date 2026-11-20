@@ -16,10 +16,14 @@ export interface JawirTagItem {
   deviceHash?: string;
   ipHash?: string;
   ownerHash?: string | null;
+  hiddenAt?: string | null;
 }
 
 // What the API may send to browsers: never the device, IP or owner hashes.
-export type PublicTag = Omit<JawirTagItem, 'deviceHash' | 'ipHash' | 'ownerHash'>;
+export type PublicTag = Omit<JawirTagItem, 'deviceHash' | 'ipHash' | 'ownerHash' | 'hiddenAt'> & {
+  // Only on the owner's own copy (/api/tags/me): the pin is hidden from everyone else.
+  hidden?: boolean;
+};
 
 // Shared across route bundles; globalThis keeps one copy per server process.
 const g = globalThis as unknown as {
@@ -27,7 +31,19 @@ const g = globalThis as unknown as {
   __jawirCoffeeVotes?: Set<string>;
   __jawirCoffeeLog?: { ipHash: string; at: number }[];
   __jawirLastNumber?: number;
+  __jawirReports?: Map<string, MemoryReport>;
 };
+
+export interface MemoryReport {
+  tagId: string;
+  reporterHash: string;
+  ipHash: string;
+  reason: string;
+  at: number;
+}
+
+// Keys are `${tagId}:${reporterHash}`.
+export const memoryReports: Map<string, MemoryReport> = (g.__jawirReports ??= new Map());
 
 // Mirrors the database counter: only grows, so deleting the newest pin never frees its number.
 export function nextMemoryJawirNumber(): number {

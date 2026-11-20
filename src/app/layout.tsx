@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import localFont from 'next/font/local';
+import { Analytics } from '@vercel/analytics/next';
 import { SITE_URL, SITE_NAME, SITE_TAGLINE, SITE_DESCRIPTION } from '@/lib/site';
 import './globals.css';
 
@@ -80,6 +81,8 @@ export default function RootLayout({
         className={`${display.variable} ${typewriter.variable} antialiased bg-parchment text-ink h-screen w-screen overflow-hidden`}
       >
         {children}
+        {/* Vercel Web Analytics: cookieless page views; a no-op outside Vercel. */}
+        <Analytics />
       </body>
     </html>
   );

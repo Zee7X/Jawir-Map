@@ -73,11 +73,11 @@ export async function POST(
       await ensureTable();
 
       const found = await db
-        .select({ id: jawirTags.id, deviceHash: jawirTags.deviceHash, ownerHash: jawirTags.ownerHash })
+        .select({ id: jawirTags.id, deviceHash: jawirTags.deviceHash, ownerHash: jawirTags.ownerHash, hiddenAt: jawirTags.hiddenAt })
         .from(jawirTags)
         .where(eq(jawirTags.id, id))
         .limit(1);
-      if (found.length === 0) return notFoundResponse();
+      if (found.length === 0 || found[0].hiddenAt) return notFoundResponse();
       if (isOwnPin(found[0], deviceHash, ownerHash)) return respond(ownResponse());
 
       const [recent] = await db
@@ -109,7 +109,7 @@ export async function POST(
     }
 
     const tag = memoryStore.find((item) => item.id === id);
-    if (!tag) return notFoundResponse();
+    if (!tag || tag.hiddenAt) return notFoundResponse();
     if (isOwnPin(tag, deviceHash, ownerHash)) return respond(ownResponse());
 
     const since = Date.now() - 60 * 60 * 1000;

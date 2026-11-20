@@ -1,12 +1,12 @@
-import { desc, eq } from 'drizzle-orm';
+import { and, desc, eq, isNull } from 'drizzle-orm';
 import { db, isDbConfigured, ensureTable } from '@/db';
-import { jawirTags, jawirCoffeeVotes } from '@/db/schema';
+import { jawirTags, jawirCoffeeVotes, jawirReports } from '@/db/schema';
 import { NPC_PINS, type TagCategory, type TrahType, type RegionStatusType } from '@/lib/geo';
-import { memoryStore, memoryCoffeeVotes, type JawirTagItem, type PublicTag } from '@/lib/memoryStore';
+import { memoryStore, memoryCoffeeVotes, memoryReports, type JawirTagItem, type PublicTag } from '@/lib/memoryStore';
 
 // Server-side reads shared by the API routes, the share metadata and the OG image.
 
-type PublicRow = Omit<typeof jawirTags.$inferSelect, 'deviceHash' | 'ipHash' | 'ownerHash'>;
+type PublicRow = Omit<typeof jawirTags.$inferSelect, 'deviceHash' | 'ipHash' | 'ownerHash' | 'hiddenAt'>;
 
 export function rowToPublic(r: PublicRow): PublicTag {
   return {
@@ -27,7 +27,7 @@ export function rowToPublic(r: PublicRow): PublicTag {
 
 export function memoryToPublic(item: JawirTagItem): PublicTag {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { deviceHash, ipHash, ownerHash, ...rest } = item;
+  const { deviceHash, ipHash, ownerHash, hiddenAt, ...rest } = item;
   return { ...rest };
 }
 
@@ -50,19 +50,27 @@ export const PUBLIC_COLUMNS = {
 export async function listPublicTags(): Promise<PublicTag[]> {
   if (isDbConfigured && db) {
     await ensureTable();
-    const rows = await db.select(PUBLIC_COLUMNS).from(jawirTags).orderBy(desc(jawirTags.createdAt));
+    const rows = await db
+      .select(PUBLIC_COLUMNS)
+      .from(jawirTags)
+      .where(isNull(jawirTags.hiddenAt))
+      .orderBy(desc(jawirTags.createdAt));
     return rows.map(rowToPublic);
   }
-  return memoryStore.map(memoryToPublic);
+  return memoryStore.filter((t) => !t.hiddenAt).map(memoryToPublic);
 }
 
 export async function findPublicTag(id: string): Promise<PublicTag | null> {
   if (isDbConfigured && db) {
     await ensureTable();
-    const [row] = await db.select(PUBLIC_COLUMNS).from(jawirTags).where(eq(jawirTags.id, id)).limit(1);
+    const [row] = await db
+      .select(PUBLIC_COLUMNS)
+      .from(jawirTags)
+      .where(and(eq(jawirTags.id, id), isNull(jawirTags.hiddenAt)))
+      .limit(1);
     return row ? rowToPublic(row) : null;
   }
-  const item = memoryStore.find((t) => t.id === id);
+  const item = memoryStore.find((t) => t.id === id && !t.hiddenAt);
   return item ? memoryToPublic(item) : null;
 }
 
@@ -78,14 +86,36 @@ export async function findShareableTag(id: string): Promise<PublicTag | null> {
 export async function findTagByOwner(ownerHash: string): Promise<PublicTag | null> {
   if (isDbConfigured && db) {
     await ensureTable();
-    const [row] = await db.select(PUBLIC_COLUMNS).from(jawirTags).where(eq(jawirTags.ownerHash, ownerHash)).limit(1);
-    return row ? rowToPublic(row) : null;
+    const [row] = await db
+      .select({ ...PUBLIC_COLUMNS, hiddenAt: jawirTags.hiddenAt })
+      .from(jawirTags)
+      .where(eq(jawirTags.ownerHash, ownerHash))
+      .limit(1);
+    return row ? { ...rowToPublic(row), hidden: row.hiddenAt != null } : null;
   }
   const item = memoryStore.find((t) => t.ownerHash === ownerHash);
-  return item ? memoryToPublic(item) : null;
+  return item ? { ...memoryToPublic(item), hidden: !!item.hiddenAt } : null;
 }
 
-// Removes the owner's pin and the coffee votes it received. Returns false when the owner has no pin.
+// Deletes a pin with its coffee votes and reports.
+export async function deletePinCascade(id: string): Promise<void> {
+  if (isDbConfigured && db) {
+    await db.delete(jawirTags).where(eq(jawirTags.id, id));
+    await db.delete(jawirCoffeeVotes).where(eq(jawirCoffeeVotes.tagId, id));
+    await db.delete(jawirReports).where(eq(jawirReports.tagId, id));
+    return;
+  }
+  const index = memoryStore.findIndex((t) => t.id === id);
+  if (index >= 0) memoryStore.splice(index, 1);
+  memoryCoffeeVotes.forEach((key) => {
+    if (key.startsWith(`${id}:`)) memoryCoffeeVotes.delete(key);
+  });
+  memoryReports.forEach((r, key) => {
+    if (r.tagId === id) memoryReports.delete(key);
+  });
+}
+
+// Removes the owner's pin, its coffee votes and reports. Returns false when the owner has no pin.
 export async function deleteTagByOwner(ownerHash: string): Promise<boolean> {
   if (isDbConfigured && db) {
     await ensureTable();
@@ -95,15 +125,11 @@ export async function deleteTagByOwner(ownerHash: string): Promise<boolean> {
       .where(eq(jawirTags.ownerHash, ownerHash))
       .limit(1);
     if (!row) return false;
-    await db.delete(jawirTags).where(eq(jawirTags.id, row.id));
-    await db.delete(jawirCoffeeVotes).where(eq(jawirCoffeeVotes.tagId, row.id));
+    await deletePinCascade(row.id);
     return true;
   }
-  const index = memoryStore.findIndex((t) => t.ownerHash === ownerHash);
-  if (index < 0) return false;
-  const [removed] = memoryStore.splice(index, 1);
-  memoryCoffeeVotes.forEach((key) => {
-    if (key.startsWith(`${removed.id}:`)) memoryCoffeeVotes.delete(key);
-  });
+  const item = memoryStore.find((t) => t.ownerHash === ownerHash);
+  if (!item) return false;
+  await deletePinCascade(item.id);
   return true;
 }

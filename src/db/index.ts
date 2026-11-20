@@ -23,6 +23,8 @@ const COLUMN_MIGRATIONS: [table: string, column: string, definition: string][] =
   ['jawir_tags', 'coffee_count', 'INT NOT NULL DEFAULT 0'],
   ['jawir_tags', 'owner_hash', 'VARCHAR(64) NULL'],
   ['jawir_coffee_votes', 'ip_hash', 'VARCHAR(64) NULL'],
+  // Set when reports cross the threshold or an admin hides the pin; hidden pins leave every public view.
+  ['jawir_tags', 'hidden_at', 'TIMESTAMP NULL'],
 ];
 
 const INDEX_MIGRATIONS: [table: string, index: string, clause: string][] = [
@@ -53,6 +55,7 @@ async function initSchema(client: NonNullable<typeof rawClient>): Promise<void> 
       device_hash VARCHAR(64) NOT NULL,
       ip_hash VARCHAR(64) NOT NULL,
       owner_hash VARCHAR(64) NULL,
+      hidden_at TIMESTAMP NULL,
       created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
       UNIQUE KEY idx_jawir_number (jawir_number),
       KEY idx_coords (lat, lng),
@@ -70,6 +73,19 @@ async function initSchema(client: NonNullable<typeof rawClient>): Promise<void> 
       created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
       PRIMARY KEY (tag_id, device_hash),
       KEY idx_vote_ip (ip_hash, created_at)
+    );
+  `);
+
+  // One report per browser (voter cookie) per pin.
+  await client.execute(`
+    CREATE TABLE IF NOT EXISTS jawir_reports (
+      tag_id VARCHAR(36) NOT NULL,
+      reporter_hash VARCHAR(64) NOT NULL,
+      ip_hash VARCHAR(64) NOT NULL,
+      reason VARCHAR(20) NOT NULL,
+      created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY (tag_id, reporter_hash),
+      KEY idx_report_ip (ip_hash, created_at)
     );
   `);
 
