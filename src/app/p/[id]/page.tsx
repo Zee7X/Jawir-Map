@@ -1,7 +1,8 @@
 import type { Metadata } from 'next';
 import JawirMapApp from '@/components/JawirMapApp';
 import { findShareableTag } from '@/lib/tagStore';
-import { pinPath } from '@/lib/share';
+import { pinPath, challengeText } from '@/lib/share';
+import { TRAH_MAP, type TrahType } from '@/lib/geo';
 import { SITE_NAME } from '@/lib/site';
 
 interface PinPageProps {
@@ -23,7 +24,9 @@ export async function generateMetadata({ params }: PinPageProps): Promise<Metada
     if (!tag) return {};
 
     const title = `${tag.nickname} · ${tag.distanceKm.toLocaleString('id-ID')} km saka Lawu`;
-    const description = `“${tag.statusTag}” Tancepke pinmu uga neng ${SITE_NAME}, lur.`;
+    // Written as a dare from the pin owner, so whoever opens the link answers with their own distance.
+    const trahShort = tag.trah ? TRAH_MAP[tag.trah as TrahType]?.short : undefined;
+    const description = `“${tag.statusTag}” ${challengeText(tag, trahShort)}`;
     const image = { url: `/og?tag=${encodeURIComponent(tag.id)}`, width: 1200, height: 630, alt: `Paspor Jawir ${tag.nickname}` };
     const path = pinPath(tag.id);
 

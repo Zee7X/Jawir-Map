@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect } from 'react';
-import { MapPin, Crosshair, Mountain, Shuffle, IdCard } from 'lucide-react';
+import { MapPin, Crosshair, Mountain, Shuffle, IdCard, X } from 'lucide-react';
 import { JawirTagData } from './TagModal';
 import type { PickCenter } from './WorldMap';
 import { calculateDistanceFromLawu, detectRegionStatus, REGION_BADGE_MAP } from '@/lib/geo';
@@ -25,6 +25,9 @@ interface BottomActionBarProps {
   onFlyToMyTag: () => void;
   onFlyToLawu: () => void;
   onShuffle: () => void;
+  // Coffee that reached the viewer's pin since their last visit.
+  coffeeNews?: { fresh: number; total: number } | null;
+  onDismissCoffeeNews?: () => void;
 }
 
 const PICK_MIN_ZOOM = 11;
@@ -54,6 +57,8 @@ export default function BottomActionBar({
   onFlyToMyTag,
   onFlyToLawu,
   onShuffle,
+  coffeeNews,
+  onDismissCoffeeNews,
 }: BottomActionBarProps) {
   useEffect(() => {
     if (!isPickingLocation) return;
@@ -110,6 +115,37 @@ export default function BottomActionBar({
             </button>
           </div>
         </section>
+      )}
+
+      {!isPickingLocation && coffeeNews && (
+        <div
+          role="status"
+          className="pointer-events-auto w-full max-w-md flex items-center gap-3 pl-3.5 pr-1.5 py-1.5 rounded-md bg-ink text-parchment shadow-[0_6px_20px_-6px_rgba(67,48,30,0.5)]"
+        >
+          <span className="text-xl" aria-hidden>☕</span>
+          <p className="flex-1 text-[13px] leading-snug">
+            <b>{coffeeNews.fresh} sedulur</b> nitip kopi wiwit kowe mampir pungkasan. Saiki total{' '}
+            <b className="font-type">{coffeeNews.total}</b> kopi.
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              onDismissCoffeeNews?.();
+              onFlyToMyTag();
+            }}
+            className="shrink-0 h-9 px-3 rounded bg-terra hover:bg-terra-deep text-white text-xs font-bold transition"
+          >
+            Deleng
+          </button>
+          <button
+            type="button"
+            onClick={onDismissCoffeeNews}
+            aria-label="Tutup kabar kopi"
+            className="shrink-0 w-9 h-9 flex items-center justify-center rounded text-parchment/70 hover:text-parchment"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
       )}
 
       {!isPickingLocation && radarInfo && (

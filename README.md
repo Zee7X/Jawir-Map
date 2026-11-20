@@ -16,7 +16,7 @@ Karena itu Lawu jadi **Titik 0**. Setiap pin di peta ditarik benang merah ke pun
 
 1. **Tancepke pin.** Isi nama panggilan, pilih trah asal dan sedang ngapain, lalu tulis semboyan singkat. Lokasi bisa diambil dari GPS atau dipilih langsung di peta.
 2. **Terima Paspor Jawir.** Paspor Diplomatik digital langsung terbit, lengkap dengan nomor urut Jawir, kasta wilayah, jarak dari Lawu, cap Juru Kunci Gunung Lawu, dan kode MRZ ala paspor sungguhan. Simpan sebagai PNG untuk Story.
-3. **Pamerkan.** Bagikan link pinmu. Di WhatsApp, X, dan Telegram link itu muncul sebagai kartu paspor lengkap dengan nama, semboyan, dan jarakmu.
+3. **Pamerkan.** Bagikan link pinmu. Di WhatsApp, X, dan Telegram link itu muncul sebagai kartu paspor lengkap dengan nama, semboyan, dan jarakmu, plus tantangan: *"Aku 14.820 km saka Pucak Lawu. Kowe piro?"*
 4. **Jelajahi.** Klik pin sedulur lain untuk membaca semboyannya dan melihat rute benang merahnya ke Lawu. Bisa juga terbang ke rekor paling jauh, atau tekan **Ngacak** untuk mampir ke Jawir acak.
 
 <table>
@@ -53,12 +53,13 @@ Begini tampilan link pin saat dibagikan ke WhatsApp, X, atau Telegram:
 
 **Sedang ngapain:** 💼 Nyambut Gawe, ☕ Golek Konco, 🙋 Butuh Info, atau 🗿 Mung Absen.
 
-**Situs Legendha.** Ada empat juru kunci misterius yang menunggu disowani: Mbah Bejo di Segitiga Bermuda, Pengurus Cabang Penguin di Antartika, Agen Rahasia Ngapak di Area 51, dan Slamet Sumber Kencono yang nyasar sampai Terminal Pyongyang. Sowan ke mereka untuk dapat cap visa.
+**Situs Legendha.** Ada empat juru kunci misterius yang menunggu disowani: Mbah Bejo di Segitiga Bermuda, Pengurus Cabang Penguin di Antartika, Agen Rahasia Ngapak di Area 51, dan Slamet Sumber Kencono yang nyasar sampai Terminal Pyongyang. Sowan ke mereka untuk dapat cap visa. Kumpulkan keempat cap di **Kaca Visa** pada paspormu.
 
 ## Interaksi antar sedulur
 
-- **☕ Titip kopi.** Kirim kopi virtual ke pin sedulur lain, satu kopi per pin.
-- **🏆 Klasemen.** Ada empat papan: *Paling Adoh* (Penguasa Pojok Donya), *Juru Kunci* (paling dekat kawah Lawu), *Kopi* (Juragan Kopi Sedonya), dan *Sensus Kasta* yang menghitung persebaran trah dan wilayah.
+- **⚔️ Perang Trah.** Setiap pin jadi satu bala untuk trahnya. Papan skor trah dan kota dengan Jawir terbanyak tampil di klasemen, dan banner di peta memberi tahu apakah trahmu sedang memimpin atau tertinggal berapa bala.
+- **☕ Titip kopi.** Kirim kopi virtual ke pin sedulur lain, satu kopi per pin. Saat kamu kembali, peta memberi kabar berapa sedulur yang nitip kopi sejak kunjungan terakhirmu.
+- **🏆 Klasemen.** Selain Perang Trah, ada *Paling Adoh* (Penguasa Pojok Donya), *Juru Kunci* (paling dekat kawah Lawu), *Kopi* (Juragan Kopi Sedonya), dan *Sensus Kasta* yang menghitung persebaran wilayah.
 - **📡 Radar.** Lihat berapa sedulur Jawir dalam radius 3 km dari pinmu, dan siapa yang paling dekat. Siapa tahu bisa ngopi bareng.
 
 ## Aman dan sopan

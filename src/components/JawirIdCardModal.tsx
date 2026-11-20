@@ -7,8 +7,9 @@ import confetti from 'canvas-confetti';
 import { JawirTagData } from './TagModal';
 import Dossier from './Dossier';
 import TrahPortrait from './TrahPortrait';
-import { REGION_BADGE_MAP, TRAH_MAP, RegionStatusType, TrahType } from '@/lib/geo';
-import { pinShareUrl } from '@/lib/share';
+import { REGION_BADGE_MAP, TRAH_MAP, NPC_PINS, RegionStatusType, TrahType, type NpcPin } from '@/lib/geo';
+import { pinShareUrl, challengeText } from '@/lib/share';
+import { readVisa, VISA_TOTAL } from '@/lib/visa';
 
 interface JawirIdCardModalProps {
   isOpen: boolean;
@@ -18,6 +19,55 @@ interface JawirIdCardModalProps {
   note?: string | null;
   // Resolves to an error message, or null once the pin is deleted.
   onDelete?: () => Promise<string | null>;
+  // Flies to a legend site from an empty visa slot.
+  onVisitNpc?: (npc: NpcPin) => void;
+}
+
+// Kaca Visa: one slot per Situs Legendha, stamped once it has been sowan-ed from this browser.
+function VisaPage({ onVisitNpc }: { onVisitNpc?: (npc: NpcPin) => void }) {
+  const [visa, setVisa] = useState<string[]>([]);
+  useEffect(() => setVisa(readVisa()), []);
+  const done = visa.length >= VISA_TOTAL;
+
+  return (
+    <section aria-label="Kaca visa" className="rounded-md border border-dashed border-[#78350f]/40 bg-[#fbf3e2] p-3">
+      <div className="flex items-baseline justify-between gap-2">
+        <h3 className="font-display text-base font-extrabold text-ink">Kaca Visa</h3>
+        <span className={`font-type text-sm font-bold ${done ? 'text-moss' : 'text-terra-deep'}`}>
+          Cap visa {visa.length}/{VISA_TOTAL}
+        </span>
+      </div>
+      <p className="text-xs text-ink-soft mt-0.5">
+        {done ? 'Kabeh juru kunci wis disowani. Paspormu lengkap, lur!' : 'Sowan menyang Situs Legendha neng peta kanggo ngumpulke cap.'}
+      </p>
+      <ul className="mt-2.5 grid grid-cols-4 gap-2">
+        {NPC_PINS.map((npc) => {
+          const stamped = visa.includes(npc.id);
+          return (
+            <li key={npc.id}>
+              <button
+                type="button"
+                onClick={() => !stamped && onVisitNpc?.(npc)}
+                disabled={stamped || !onVisitNpc}
+                aria-label={stamped ? `${npc.title}: wis disowani` : `${npc.title}: durung disowani, tutul kanggo mabur mrana`}
+                title={stamped ? `${npc.title}: wis disowani` : `${npc.title}: durung disowani, tutul kanggo mabur mrana`}
+                className={`w-full aspect-square rounded-full flex flex-col items-center justify-center text-center transition ${
+                  stamped
+                    ? 'border-[3px] border-stamp text-stamp rotate-[-12deg] opacity-85 mix-blend-multiply'
+                    : 'border-2 border-dashed border-ink/25 text-ink-soft hover:border-terra hover:text-terra-deep'
+                }`}
+              >
+                <span className={`text-xl leading-none ${stamped ? '' : 'grayscale opacity-40'}`} aria-hidden>
+                  {npc.glyph}
+                </span>
+                <span className="font-type text-[8px] font-bold leading-tight mt-0.5">{stamped ? 'DISOWANI' : 'DURUNG'}</span>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+  );
 }
 
 function DeletePin({ onDelete }: { onDelete: () => Promise<string | null> }) {
@@ -128,7 +178,7 @@ function Field({ label, children, className = '' }: { label: string; children: R
   );
 }
 
-export default function JawirIdCardModal({ isOpen, onClose, tag, isNewCreation = false, note, onDelete }: JawirIdCardModalProps) {
+export default function JawirIdCardModal({ isOpen, onClose, tag, isNewCreation = false, note, onDelete, onVisitNpc }: JawirIdCardModalProps) {
   const cardRef = useRef<HTMLDivElement>(null);
   const [isDownloading, setIsDownloading] = useState(false);
   const [downloadError, setDownloadError] = useState(false);
@@ -180,10 +230,12 @@ export default function JawirIdCardModal({ isOpen, onClose, tag, isNewCreation =
 
   const handleShare = async () => {
     const shareUrl = pinShareUrl(tag.id);
-    const text = `Resmi kacathet dadi Jawir No. ${tag.jawirNumber || 1} sedonya: ${tag.nickname}, ${tag.distanceKm.toLocaleString('id-ID')} km saka Titik 0 Pucak Lawu. Tancepke pinmu uga, lur: ${shareUrl}`;
+    const dare = challengeText(tag, trahInfo.short);
+    const text = `${dare} ${shareUrl}`;
     if (navigator.share) {
       try {
-        await navigator.share({ title: 'Paspor Diplomatik Jawir', text, url: shareUrl });
+        // The share sheet adds the url itself, so it is left out of the text here.
+        await navigator.share({ title: `Paspor Jawir ${tag.nickname}`, text: dare, url: shareUrl });
         return;
       } catch {
         // user cancelled or share unsupported for this payload; fall back to clipboard
@@ -316,6 +368,15 @@ export default function JawirIdCardModal({ isOpen, onClose, tag, isNewCreation =
             </footer>
           </article>
         </div>
+
+        <p className="flex items-baseline gap-2 text-sm">
+          <span aria-hidden>☕</span>
+          <span className="text-ink-soft">Kopi saka sedulur</span>
+          <span className="leader" aria-hidden />
+          <b className="font-type text-terra-deep">{tag.coffeeCount || 0}</b>
+        </p>
+
+        <VisaPage onVisitNpc={onVisitNpc} />
 
         {note && (
           <p className="text-sm text-ink" role="status">
