@@ -35,7 +35,7 @@ interface FlyToTarget {
   tagId?: string;
 }
 
-type CoffeeResult = 'sent' | 'already' | 'own' | 'error';
+export type CoffeeResult = 'sent' | 'already' | 'own' | 'limited' | 'error';
 
 export interface PickCenter {
   lat: number;
@@ -289,6 +289,8 @@ function CoffeeButton({ tag, onAddCoffee }: { tag: JawirTagData; onAddCoffee: Wo
       setNote('Kowe wis tau ngirim kopi. Siji wae, ojo boros, lur.');
     } else if (result === 'own') {
       setNote('Iki titikmu dhewe, lur. Kopine kanggo sedulur liya wae.');
+    } else if (result === 'limited') {
+      setNote('Kopine entek, lur. Ngaso sedhela, mengko jajal maneh.');
     } else {
       setNote('Kopine kesenggol, tumpah. Jajal maneh.');
     }

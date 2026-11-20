@@ -15,6 +15,69 @@ interface JawirIdCardModalProps {
   tag: JawirTagData | null;
   isNewCreation?: boolean;
   note?: string | null;
+  // Resolves to an error message, or null once the pin is deleted.
+  onDelete?: () => Promise<string | null>;
+}
+
+function DeletePin({ onDelete }: { onDelete: () => Promise<string | null> }) {
+  const [step, setStep] = useState<'idle' | 'confirm' | 'busy'>('idle');
+  const [error, setError] = useState<string | null>(null);
+
+  const handleDelete = async () => {
+    setStep('busy');
+    setError(null);
+    const message = await onDelete();
+    if (message) {
+      setError(message);
+      setStep('confirm');
+    }
+  };
+
+  if (step === 'idle') {
+    return (
+      <button
+        type="button"
+        onClick={() => setStep('confirm')}
+        className="min-h-11 -ml-1 px-1 text-sm text-ink-soft underline underline-offset-4 decoration-ink/30 hover:text-stamp hover:decoration-stamp"
+      >
+        Busak pinku
+      </button>
+    );
+  }
+
+  return (
+    <div className="rounded border border-stamp/40 bg-[#fdecea] p-3 space-y-2.5" role="group" aria-label="Busak pin">
+      <p className="text-sm text-[#7f1d1d]">
+        Pin, paspor, lan kabeh kopi sing wis mlebu bakal ilang salawase. Nomer Jawirmu ora iso dibalekake.
+      </p>
+      {error && (
+        <p className="text-sm font-bold text-[#7f1d1d]" role="alert">
+          {error}
+        </p>
+      )}
+      <div className="flex gap-2">
+        <button
+          type="button"
+          onClick={() => {
+            setStep('idle');
+            setError(null);
+          }}
+          disabled={step === 'busy'}
+          className="h-11 px-4 rounded border border-amber-900/25 bg-white text-sm font-bold text-ink hover:border-amber-900/50 transition disabled:opacity-60"
+        >
+          Ora sida
+        </button>
+        <button
+          type="button"
+          onClick={handleDelete}
+          disabled={step === 'busy'}
+          className="flex-1 h-11 px-4 rounded bg-stamp hover:bg-[#991b1b] text-white text-sm font-bold transition disabled:opacity-60"
+        >
+          {step === 'busy' ? 'Lagi mbusak…' : 'Iya, busak pinku'}
+        </button>
+      </div>
+    </div>
+  );
 }
 
 const MRZ_LEN = 44;
@@ -64,7 +127,7 @@ function Field({ label, children, className = '' }: { label: string; children: R
   );
 }
 
-export default function JawirIdCardModal({ isOpen, onClose, tag, isNewCreation = false, note }: JawirIdCardModalProps) {
+export default function JawirIdCardModal({ isOpen, onClose, tag, isNewCreation = false, note, onDelete }: JawirIdCardModalProps) {
   const cardRef = useRef<HTMLDivElement>(null);
   const [isDownloading, setIsDownloading] = useState(false);
   const [downloadError, setDownloadError] = useState(false);
@@ -282,6 +345,9 @@ export default function JawirIdCardModal({ isOpen, onClose, tag, isNewCreation =
             <span>{isCopied ? 'Wis disalin' : 'Kirimke'}</span>
           </button>
         </div>
+
+        {/* Keyed by pin so a confirm left open never carries over to another passport */}
+        {onDelete && !isNewCreation && <DeletePin key={tag.id} onDelete={onDelete} />}
       </div>
     </Dossier>
   );

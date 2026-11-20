@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { MapPin, Navigation, Loader2 } from 'lucide-react';
 import Dossier from './Dossier';
-import FingerprintJS from '@fingerprintjs/fingerprintjs';
+import { getFingerprintId } from '@/lib/fingerprint';
 import { isCleanText } from '@/lib/filter';
 import {
   calculateDistanceFromLawu,
@@ -61,11 +61,10 @@ export default function TagModal({
 
   useEffect(() => {
     let isMounted = true;
-    FingerprintJS.load()
-      .then((fp) => fp.get())
-      .then((result) => {
+    getFingerprintId()
+      .then((visitorId) => {
         if (isMounted) {
-          setFingerprintId(result.visitorId);
+          setFingerprintId(visitorId);
         }
       })
       .catch((err) => {

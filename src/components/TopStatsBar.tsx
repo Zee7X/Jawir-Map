@@ -7,6 +7,7 @@ import { JawirTagData } from './TagModal';
 
 interface TopStatsBarProps {
   total: number;
+  isLoading?: boolean;
   farthestTag: JawirTagData | null;
   onOpenLeaderboard: () => void;
   onOpenLore: () => void;
@@ -18,19 +19,26 @@ const CHROME =
 
 export default function TopStatsBar({
   total,
+  isLoading = false,
   farthestTag,
   onOpenLeaderboard,
   onOpenLore,
   onFlyToFarthest,
 }: TopStatsBarProps) {
   return (
-    <header className="fixed top-3 left-3 right-3 z-[900] pointer-events-none flex items-start justify-between gap-2">
+    <header className="fixed top-3 left-3 right-3 z-[900] pointer-events-none select-none flex items-start justify-between gap-2">
       <div className={`pointer-events-auto flex items-center gap-2.5 pl-1.5 pr-3.5 py-1.5 rounded-md ${CHROME}`}>
         <Image src="/logo.png" alt="" width={36} height={36} className="rounded" priority />
         <div className="leading-none">
-          <h1 className="font-display text-[17px] font-extrabold text-ink">Jawir Tag</h1>
-          <p className="font-type text-[11px] text-ink-soft mt-1 whitespace-nowrap">
-            <b className="text-terra">{total.toLocaleString('id-ID')}</b> sedulur kacathet
+          <h1 className="font-display text-[17px] font-extrabold text-ink">Jawir Map</h1>
+          <p className="font-type text-[11px] text-ink-soft mt-1 whitespace-nowrap" aria-live="polite">
+            {isLoading ? (
+              'Ngitung sedulur…'
+            ) : (
+              <>
+                <b className="text-terra">{total.toLocaleString('id-ID')}</b> sedulur kacathet
+              </>
+            )}
           </p>
         </div>
       </div>
