@@ -96,7 +96,7 @@ export async function GET(request: NextRequest) {
   const displayText = `${SITE_NAME}${SITE_TAGLINE}${nickname}`;
   const typeText = `${HOST}${km}${docNo}Paspor Diplomatik Jawir · `;
   // The body font also covers the display and typewriter text, so a failed Fraunces or Courier load never shows tofu.
-  const bodyText = `${SITE_TAGLINE}${quote}${chips}${intro}Tancepke pinmu, lur!saka Titik 0 Pucak Gunung Lawu${displayText}${typeText}`;
+  const bodyText = `${SITE_TAGLINE}${quote}${chips}${intro}Kowe adoh piro? Tancepke pinmu!saka Titik 0 Pucak Gunung Lawu${displayText}${typeText}`;
   const [body400, fraunces, courier, logo] = await Promise.all([
     loadGoogleFont('Noto Sans', 400, bodyText),
     loadGoogleFont('Fraunces', 800, displayText),
@@ -144,7 +144,7 @@ export async function GET(request: NextRequest) {
                 </span>
               ))}
           </div>
-          <span style={{ fontSize: 22, color: INK_SOFT }}>Tancepke pinmu, lur!</span>
+          <span style={{ fontSize: 24, color: TERRA_DEEP }}>Kowe adoh piro? Tancepke pinmu!</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
           <Mountain width={70} />

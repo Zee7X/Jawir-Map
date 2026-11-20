@@ -170,40 +170,46 @@ export type TrahType = 'mataraman' | 'ngapak' | 'arekan' | 'pantura' | 'rantau_l
 
 export const TRAH_MAP: Record<
   TrahType,
-  { label: string; icon: string; desc: string; badgeClass: string }
+  { label: string; short: string; icon: string; desc: string; badgeClass: string }
 > = {
   mataraman: {
     label: 'Trah Mataraman',
+    short: 'Mataraman',
     icon: '⚔️',
     desc: 'Solo, Jogja, Madiun, Kediri, sakubenge Lawu',
     badgeClass: CHIP,
   },
   ngapak: {
     label: 'Trah Ngapak',
+    short: 'Ngapak',
     icon: '🗣️',
     desc: 'Banyumas, Tegal, Brebes, Cilacap, Kebumen',
     badgeClass: CHIP,
   },
   arekan: {
     label: 'Trah Arekan & Tapal Kuda',
+    short: 'Arekan',
     icon: '🔥',
     desc: 'Surabaya, Malang, Jember, Banyuwangi',
     badgeClass: CHIP,
   },
   pantura: {
     label: 'Trah Pantura & Muria',
+    short: 'Pantura',
     icon: '🌊',
     desc: 'Semarang, Kudus, Pati, Pekalongan, Rembang',
     badgeClass: CHIP,
   },
   rantau_lahir: {
     label: 'Lair neng Rantau',
+    short: 'Lair Rantau',
     icon: '🌱',
     desc: 'Getih Jawa, lair neng rantau, basa Jawane rada kaku',
     badgeClass: CHIP,
   },
   simpatisan: {
     label: 'Simpatisan / Dudu Jawir',
+    short: 'Simpatisan',
     icon: '🤝',
     desc: 'Dudu Jawa, nanging wis doyan sambel lan tresna Jawa',
     badgeClass: CHIP,

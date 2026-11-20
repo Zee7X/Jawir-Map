@@ -10,8 +10,8 @@ import LoreModal from '@/components/LoreModal';
 import LeaderboardModal from '@/components/LeaderboardModal';
 import JawirIdCardModal from '@/components/JawirIdCardModal';
 import { getFingerprintId } from '@/lib/fingerprint';
-import { buildLeaderboard } from '@/lib/leaderboard';
-import { LAWU_CENTER, NPC_PINS, calculateDistanceKm } from '@/lib/geo';
+import { buildLeaderboard, trahWarLine } from '@/lib/leaderboard';
+import { LAWU_CENTER, NPC_PINS, calculateDistanceKm, type NpcPin, type TrahType } from '@/lib/geo';
 import { pinPath } from '@/lib/share';
 
 const RADAR_KM = 3;
@@ -66,6 +66,23 @@ function rememberDeleted(id: string) {
   }
 }
 
+// Coffee count the owner last saw, so a return visit can say how many arrived since.
+const coffeeSeenKey = (id: string) => `jawir_coffee_seen_${id}`;
+
+function takeCoffeeNews(tag: JawirTagData): { fresh: number; total: number } | null {
+  const total = tag.coffeeCount || 0;
+  try {
+    const raw = localStorage.getItem(coffeeSeenKey(tag.id));
+    localStorage.setItem(coffeeSeenKey(tag.id), String(total));
+    // First visit with this pin: start counting from now instead of announcing every past coffee.
+    if (raw === null) return null;
+    const fresh = total - Number(raw);
+    return fresh > 0 ? { fresh, total } : null;
+  } catch {
+    return null;
+  }
+}
+
 async function fetchJson<T>(url: string): Promise<T> {
   const res = await fetch(url);
   const data = await res.json();
@@ -80,6 +97,7 @@ export default function JawirMapApp({ initialTagId }: { initialTagId?: string })
   const [userTag, setUserTag] = useState<JawirTagData | null>(null);
   // True only when this browser holds the pin's owner cookie; legacy pins known from localStorage cannot be deleted.
   const [ownsByCookie, setOwnsByCookie] = useState(false);
+  const [coffeeNews, setCoffeeNews] = useState<{ fresh: number; total: number } | null>(null);
 
   const [flyToTarget, setFlyToTarget] = useState<{
     lat: number;
@@ -107,6 +125,7 @@ export default function JawirMapApp({ initialTagId }: { initialTagId?: string })
   const total = tags.length;
   const leaderboard = useMemo(() => buildLeaderboard(tags), [tags]);
   const farthestTag = leaderboard.topFarthest[0] || null;
+  const warLine = useMemo(() => trahWarLine(leaderboard.trahWar, userTag?.trah as TrahType | undefined), [leaderboard, userTag]);
 
   const selectTag = useCallback((tag: JawirTagData | null) => {
     setSelectedTagForLine(tag);
@@ -137,6 +156,7 @@ export default function JawirMapApp({ initialTagId }: { initialTagId?: string })
       setUserTag(mine);
       setOwnsByCookie(true);
       writeSavedTag(mine);
+      setCoffeeNews(takeCoffeeNews(mine));
     } else if (me.status === 'fulfilled') {
       // No owner cookie match. Pins made before owner cookies existed are still recognised from localStorage.
       const saved = readSavedTag();
@@ -144,6 +164,7 @@ export default function JawirMapApp({ initialTagId }: { initialTagId?: string })
       setUserTag(legacy || null);
       setOwnsByCookie(false);
       writeSavedTag(legacy || null);
+      if (legacy) setCoffeeNews(takeCoffeeNews(legacy));
     }
 
     setTags(fetched);
@@ -256,6 +277,13 @@ export default function JawirMapApp({ initialTagId }: { initialTagId?: string })
   const handleCancelPickLocation = () => {
     setIsPickingLocation(false);
     setIsTagModalOpen(true);
+  };
+
+  const handleVisitNpc = (npc: NpcPin) => {
+    setIsIdCardOpen(false);
+    setPopupAfterClose(null);
+    selectTag(npc);
+    setFlyToTarget({ lat: npc.lat, lng: npc.lng, zoom: 13, tagId: npc.id });
   };
 
   const handleTagCreated = (newTag: JawirTagData) => {
@@ -371,6 +399,19 @@ export default function JawirMapApp({ initialTagId }: { initialTagId?: string })
         </div>
       )}
 
+      {loadState === 'ok' && warLine && !isPickingLocation && !selectedTagForLine && (
+        <button
+          type="button"
+          onClick={() => setIsLeaderboardOpen(true)}
+          className="fixed top-[72px] left-3 z-[890] max-w-[calc(100%-24px)] sm:max-w-md flex items-center gap-2 pl-3 pr-2.5 py-2 rounded-md bg-parchment-card border border-dashed border-terra/50 text-left text-[13px] leading-snug text-ink shadow-[0_2px_10px_-3px_rgba(67,48,30,0.3)] hover:border-terra transition select-none"
+        >
+          <span className="flex-1">
+            <b className="text-terra-deep">Perang Trah:</b> {warLine}
+          </span>
+          <span className="shrink-0 font-type text-xs font-bold text-terra-deep underline underline-offset-2">Klasemen</span>
+        </button>
+      )}
+
       {/* Main Interactive Map */}
       <MapWrapper
         tags={tags}
@@ -402,6 +443,8 @@ export default function JawirMapApp({ initialTagId }: { initialTagId?: string })
         onFlyToMyTag={handleFlyToMyTag}
         onFlyToLawu={handleFlyToLawu}
         onShuffle={handleShuffle}
+        coffeeNews={coffeeNews}
+        onDismissCoffeeNews={() => setCoffeeNews(null)}
       />
 
       {/* Modals */}
@@ -420,6 +463,7 @@ export default function JawirMapApp({ initialTagId }: { initialTagId?: string })
         isOpen={isLeaderboardOpen}
         onClose={() => setIsLeaderboardOpen(false)}
         leaderboard={loadState === 'error' ? null : leaderboard}
+        userTrah={userTag?.trah as TrahType | undefined}
         total={total}
         onSelectTag={(tag) => {
           selectTag(tag);
@@ -445,6 +489,7 @@ export default function JawirMapApp({ initialTagId }: { initialTagId?: string })
         isNewCreation={isNewCreation}
         note={idCardNote}
         onDelete={ownsByCookie ? handleDeleteMyTag : undefined}
+        onVisitNpc={handleVisitNpc}
       />
     </main>
   );

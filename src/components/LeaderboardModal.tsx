@@ -3,8 +3,8 @@
 import React, { useEffect, useState } from 'react';
 import { JawirTagData } from './TagModal';
 import Dossier from './Dossier';
-import { TRAH_MAP, REGION_BADGE_MAP } from '@/lib/geo';
-import type { LeaderboardData } from '@/lib/leaderboard';
+import { TRAH_MAP, REGION_BADGE_MAP, type TrahType } from '@/lib/geo';
+import { trahRanks, type LeaderboardData } from '@/lib/leaderboard';
 
 export type { LeaderboardData };
 
@@ -14,11 +14,15 @@ interface LeaderboardModalProps {
   leaderboard: LeaderboardData | null;
   total: number;
   onSelectTag: (tag: JawirTagData) => void;
+  // Trah of the viewer's own pin, highlighted in Perang Trah.
+  userTrah?: TrahType;
 }
 
-type TabType = 'farthest' | 'closest' | 'coffee' | 'census';
+export type TabType = 'war' | 'farthest' | 'closest' | 'coffee' | 'census';
+type BoardTab = Exclude<TabType, 'census' | 'war'>;
 
 const TABS: { id: TabType; label: string }[] = [
+  { id: 'war', label: 'Perang Trah' },
   { id: 'farthest', label: 'Paling Adoh' },
   { id: 'closest', label: 'Juru Kunci' },
   { id: 'coffee', label: 'Kopi' },
@@ -26,7 +30,7 @@ const TABS: { id: TabType; label: string }[] = [
 ];
 
 // Titles are earned by rank in each board, so they never claim anything the data does not show.
-const BOARDS: Record<Exclude<TabType, 'census'>, { intro: string; titles: string[]; metric: (t: JawirTagData) => string }> = {
+const BOARDS: Record<BoardTab, { intro: string; titles: string[]; metric: (t: JawirTagData) => string }> = {
   farthest: {
     intro: 'Diukur garis lurus saka Pucak Lawu. Sapa sing paling nekat minggat.',
     titles: ['Penguasa Pojok Donya', 'Duta Besar Perantauan', 'Lali Dalan Mulih'],
@@ -88,6 +92,80 @@ function Podium({ items, titles, metric, onPick }: {
   );
 }
 
+const MEDAL_ICONS = ['🥇', '🥈', '🥉'];
+
+function WarPanel({ leaderboard, userTrah }: { leaderboard: LeaderboardData; userTrah?: TrahType }) {
+  const war = leaderboard.trahWar;
+  const top = war[0]?.count || 0;
+  const ranks = trahRanks(war);
+  const [grown, setGrown] = useState(false);
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setGrown(true));
+    return () => cancelAnimationFrame(id);
+  }, []);
+
+  return (
+    <div className="space-y-6">
+      <section>
+        <h3 className="font-display text-lg font-extrabold">Trah endi sing paling akeh balane?</h3>
+        <p className="text-xs text-ink-soft mb-3">Saben pin dadi siji bala kanggo trahe. Ajak sedulur sak trah ben trahmu menang.</p>
+        <ol className="space-y-2.5">
+          {war.map((w, i) => {
+            const info = TRAH_MAP[w.trah];
+            const mine = w.trah === userTrah;
+            const rank = ranks[i];
+            const gap = top - w.count;
+            return (
+              <li key={w.trah} className={`rounded px-2.5 py-2 ${mine ? 'bg-[#fbeee4] ring-1 ring-terra/40' : ''}`}>
+                <div className="flex items-baseline gap-2 text-sm">
+                  <span className="w-6 shrink-0 text-center" aria-label={`Peringkat ${rank}`}>
+                    {w.count > 0 && MEDAL_ICONS[rank - 1] ? MEDAL_ICONS[rank - 1] : <span className="font-type text-ink-soft">{rank}</span>}
+                  </span>
+                  <span aria-hidden>{info.icon}</span>
+                  <span className="font-semibold text-ink">
+                    {info.label}
+                    {mine && <b className="ml-1.5 text-xs text-terra-deep">· trahmu</b>}
+                  </span>
+                  <span className="leader" aria-hidden />
+                  <span className="font-type font-bold text-ink">{w.count}</span>
+                </div>
+                <span className="mt-1.5 ml-8 block h-2.5 rounded-sm bg-amber-900/10 overflow-hidden">
+                  <span
+                    className={`block h-full ${rank === 1 && w.count > 0 ? 'bg-gold' : 'bg-terra'} transition-[width] duration-700 ease-out motion-reduce:transition-none`}
+                    style={{ width: grown && top > 0 ? `${Math.round((w.count / top) * 100)}%` : 0 }}
+                  />
+                </span>
+                {mine && gap > 0 && (
+                  <p className="mt-1 ml-8 text-xs font-bold text-terra-deep">Kari {gap} bala maneh nyusul {TRAH_MAP[war[0].trah].short}!</p>
+                )}
+              </li>
+            );
+          })}
+        </ol>
+      </section>
+
+      <section>
+        <h3 className="font-display text-lg font-extrabold">Kutha paling rame</h3>
+        <p className="text-xs text-ink-soft mb-2">Kutha sing paling akeh Jawir-e. Kuthamu durung mlebu? Ajak konco nancep.</p>
+        {leaderboard.topCities.length === 0 ? (
+          <p className="py-4 text-sm text-ink-soft">Durung ana kutha sing rame. Dadia sing kapisan.</p>
+        ) : (
+          <ol className="divide-y divide-amber-900/10">
+            {leaderboard.topCities.map((c, i) => (
+              <li key={c.name} className="flex items-baseline gap-2 py-2.5 text-sm">
+                <span className="font-type text-ink-soft w-5">{i + 1}</span>
+                <span className="font-semibold">{c.name}</span>
+                <span className="leader" aria-hidden />
+                <span className="font-type font-bold">{c.count} Jawir</span>
+              </li>
+            ))}
+          </ol>
+        )}
+      </section>
+    </div>
+  );
+}
+
 function CensusBar({ icon, label, desc, count, total }: { icon: string; label: string; desc?: string; count: number; total: number }) {
   const [open, setOpen] = useState(false);
   const [grown, setGrown] = useState(false);
@@ -125,8 +203,8 @@ function CensusBar({ icon, label, desc, count, total }: { icon: string; label: s
   );
 }
 
-export default function LeaderboardModal({ isOpen, onClose, leaderboard, total, onSelectTag }: LeaderboardModalProps) {
-  const [activeTab, setActiveTab] = useState<TabType>('farthest');
+export default function LeaderboardModal({ isOpen, onClose, leaderboard, total, onSelectTag, userTrah }: LeaderboardModalProps) {
+  const [activeTab, setActiveTab] = useState<TabType>('war');
 
   if (!isOpen) return null;
 
@@ -135,7 +213,7 @@ export default function LeaderboardModal({ isOpen, onClose, leaderboard, total, 
     onClose();
   };
 
-  const lists: Record<Exclude<TabType, 'census'>, JawirTagData[]> = {
+  const lists: Record<BoardTab, JawirTagData[]> = {
     farthest: leaderboard?.topFarthest || [],
     closest: leaderboard?.topClosest || [],
     coffee: (leaderboard?.topCoffee || []).filter((t) => (t.coffeeCount || 0) > 0),
@@ -172,6 +250,8 @@ export default function LeaderboardModal({ isOpen, onClose, leaderboard, total, 
           <p className="py-10 text-center text-sm text-ink-soft">
             Klasemene ngadat, lur. Tutup, terus bukak maneh.
           </p>
+        ) : activeTab === 'war' ? (
+          <WarPanel leaderboard={leaderboard} userTrah={userTrah} />
         ) : activeTab === 'census' ? (
           <div className="space-y-6">
             <section>
@@ -180,15 +260,6 @@ export default function LeaderboardModal({ isOpen, onClose, leaderboard, total, 
               <ul className="divide-y divide-amber-900/10">
                 {Object.entries(REGION_BADGE_MAP).map(([key, info]) => (
                   <CensusBar key={key} icon={info.icon} label={info.label} desc={info.desc} count={leaderboard.regionStats[key] || 0} total={total} />
-                ))}
-              </ul>
-            </section>
-            <section>
-              <h3 className="font-display text-lg font-extrabold">Trah asal</h3>
-              <p className="text-xs text-ink-soft mb-2">Tutul barise kanggo ndeleng dhaerahe.</p>
-              <ul className="divide-y divide-amber-900/10">
-                {Object.entries(TRAH_MAP).map(([key, info]) => (
-                  <CensusBar key={key} icon={info.icon} label={info.label} desc={info.desc} count={leaderboard.trahStats[key] || 0} total={total} />
                 ))}
               </ul>
             </section>

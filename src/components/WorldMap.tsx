@@ -28,6 +28,7 @@ import {
 } from '@/lib/geo';
 import { JawirTagData } from './TagModal';
 import { pinShareUrl } from '@/lib/share';
+import { readVisa, addVisa, VISA_TOTAL } from '@/lib/visa';
 
 interface FlyToTarget {
   lat: number;
@@ -58,6 +59,9 @@ interface WorldMapProps {
 }
 
 const THREAD = '#b91c1c';
+
+// Opening a popup pans it clear of the floating header (top) and action bar (bottom), so its close button stays tappable.
+const POPUP_PAD = { autoPanPaddingTopLeft: [12, 84] as L.PointTuple, autoPanPaddingBottomRight: [12, 96] as L.PointTuple };
 
 const TOPO_URL = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}';
 const WORLD_BOUNDS: L.LatLngBoundsLiteral = [
@@ -356,32 +360,19 @@ function ShareButton({ tagId }: { tagId: string }) {
   );
 }
 
-const VISA_KEY = 'jawir_visa';
-
-function readVisa(): string[] {
-  try {
-    const parsed = JSON.parse(localStorage.getItem(VISA_KEY) || '[]');
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-}
-
 function SowanButton({ npc }: { npc: NpcPin }) {
   const [state, setState] = useState<'idle' | 'stamping' | 'done'>('idle');
+  const [count, setCount] = useState(0);
 
   useEffect(() => {
-    if (readVisa().includes(npc.id)) setState('done');
+    const visa = readVisa();
+    setCount(visa.length);
+    if (visa.includes(npc.id)) setState('done');
   }, [npc.id]);
 
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    try {
-      const visa = readVisa();
-      if (!visa.includes(npc.id)) localStorage.setItem(VISA_KEY, JSON.stringify([...visa, npc.id]));
-    } catch {
-      // storage blocked: the stamp still shows for this visit
-    }
+    setCount(addVisa(npc.id).length);
     setState('stamping');
   };
 
@@ -397,12 +388,19 @@ function SowanButton({ npc }: { npc: NpcPin }) {
             >
               Sowan
             </button>
-            <p className="text-xs text-ink-soft mt-1.5">{npc.unlockHint}</p>
+            <p className="text-xs text-ink-soft mt-1.5">
+              {npc.unlockHint} · koleksimu {count}/{VISA_TOTAL}
+            </p>
           </>
         ) : (
-          <p className="text-sm font-bold text-moss" aria-live="polite">
-            Wis disowani ✓
-          </p>
+          <div aria-live="polite">
+            <p className="text-sm font-bold text-moss">Wis disowani ✓</p>
+            <p className="text-xs text-ink-soft mt-0.5">
+              {count >= VISA_TOTAL
+                ? `Cap visa ${count}/${VISA_TOTAL}. Paspormu wis lengkap, lur!`
+                : `Cap visa ${count}/${VISA_TOTAL}. Golek juru kunci liyane neng peta.`}
+            </p>
+          </div>
         )}
       </div>
       {state !== 'idle' && (
@@ -673,7 +671,7 @@ export default function WorldMap({
             },
           }}
         >
-          <Popup className="jawir-map-popup" eventHandlers={{ remove: () => onSelectTagForLine(null) }}>
+          <Popup className="jawir-map-popup" {...POPUP_PAD} eventHandlers={{ remove: () => onSelectTagForLine(null) }}>
             <div className="p-4 pr-10 w-[290px] sm:w-[320px] space-y-3 box-border">
               <div>
                 <p className="font-type text-xs text-terra-deep">0 km · {LAWU_CENTER.elevation}</p>
@@ -717,7 +715,7 @@ export default function WorldMap({
                   },
                 }}
               >
-                <Popup className="jawir-map-popup" eventHandlers={{ remove: () => clearIfSelected(tag.id) }}>
+                <Popup className="jawir-map-popup" {...POPUP_PAD} eventHandlers={{ remove: () => clearIfSelected(tag.id) }}>
                   <div className="p-4 w-[290px] sm:w-[320px] space-y-3 box-border">
                     <div className="pr-8">
                       <p className="font-type text-xs text-ink-soft">
@@ -780,7 +778,7 @@ export default function WorldMap({
               },
             }}
           >
-            <Popup className="jawir-map-popup" eventHandlers={{ remove: () => clearIfSelected(npc.id) }}>
+            <Popup className="jawir-map-popup" {...POPUP_PAD} eventHandlers={{ remove: () => clearIfSelected(npc.id) }}>
               <LegendPopupBody npc={npc} />
             </Popup>
           </Marker>
