@@ -6,7 +6,7 @@
 
 **👉 [jawirmap.lumelo.my.id](https://jawirmap.lumelo.my.id)**
 
-[![Jawir Map](https://jawirmap.lumelo.my.id/og)](https://jawirmap.lumelo.my.id)
+![Benang merah dari pin Cak Dimas di Tokyo ke Titik 0 Lawu, 5.420 km](docs/screenshots/peta-benang-abang.jpg)
 
 ## Kenapa Lawu?
 
@@ -20,6 +20,25 @@ Karena itu Lawu jadi **Titik 0**. Setiap pin di peta ditarik benang merah ke pun
 2. **Terima Paspor Jawir.** Paspor Diplomatik digital langsung terbit, lengkap dengan nomor urut Jawir, kasta wilayah, jarak dari Lawu, cap Juru Kunci Gunung Lawu, dan kode MRZ ala paspor sungguhan. Simpan sebagai PNG untuk Story.
 3. **Pamerkan.** Bagikan link pinmu. Di WhatsApp, X, dan Telegram link itu muncul sebagai kartu paspor lengkap dengan nama, semboyan, dan jarakmu.
 4. **Jelajahi.** Klik pin sedulur lain untuk membaca semboyannya dan melihat rute benang merahnya ke Lawu. Bisa juga terbang ke rekor paling jauh, atau tekan **Ngacak** untuk mampir ke Jawir acak.
+
+<table>
+  <tr>
+    <td align="center"><img src="docs/screenshots/blangko-pendhaftaran.jpg" width="200" alt="Formulir pendaftaran pin"></td>
+    <td align="center"><img src="docs/screenshots/paspor-jawir.jpg" width="200" alt="Paspor Jawir digital"></td>
+    <td align="center"><img src="docs/screenshots/klasemen.jpg" width="200" alt="Klasemen Paling Adoh"></td>
+    <td align="center"><img src="docs/screenshots/situs-legendha.jpg" width="200" alt="Situs Legendha Terminal Pyongyang"></td>
+  </tr>
+  <tr>
+    <td align="center"><sub>Blangko pendaftaran</sub></td>
+    <td align="center"><sub>Paspor Jawir</sub></td>
+    <td align="center"><sub>Klasemen</sub></td>
+    <td align="center"><sub>Situs Legendha</sub></td>
+  </tr>
+</table>
+
+Begini tampilan link pin saat dibagikan ke WhatsApp, X, atau Telegram:
+
+<img src="https://jawirmap.lumelo.my.id/og?tag=npc-pyongyang" width="600" alt="Contoh kartu preview link pin">
 
 ## Isi peta
 
