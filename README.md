@@ -54,6 +54,8 @@ Saat pin dibuat, server memberi token acak lewat cookie `jawir_owner` (httpOnly,
 2. Isi environment variables di atas pada **Project → Settings → Environment Variables**.
 3. Tambahkan domain `jawirmap.lumelo.my.id` di **Project → Settings → Domains**, lalu buat record DNS `CNAME jawirmap` ke nilai yang ditampilkan Vercel.
 
+Function berjalan di `sin1` (Singapura, lihat `vercel.json`), sama dengan region TiDB, supaya query tidak menyeberang benua.
+
 `GET /api/tags` di-cache CDN 15 detik (`s-maxage=15, stale-while-revalidate=60`), halaman `/p/<id>` 5 menit (ISR), gambar OG 1 jam.
 
 ## Lisensi
