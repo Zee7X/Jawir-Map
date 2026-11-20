@@ -28,6 +28,8 @@ export const jawirTags = mysqlTable(
     coffeeCount: int('coffee_count').notNull().default(0), // Jumlah reaksi "Titip Kopi"
     deviceHash: varchar('device_hash', { length: 64 }).notNull(), // SHA-256 Fingerprint + Salt
     ipHash: varchar('ip_hash', { length: 64 }).notNull(), // SHA-256 IP + Salt
+    // SHA-256 of the random owner token kept in the creator's httpOnly cookie. NULL for pins made before tokens existed.
+    ownerHash: varchar('owner_hash', { length: 64 }),
     createdAt: timestamp('created_at').defaultNow().notNull(),
   },
   (table) => ({
@@ -36,6 +38,7 @@ export const jawirTags = mysqlTable(
     coordsIdx: index('idx_coords').on(table.lat, table.lng),
     distanceIdx: index('idx_distance').on(table.distanceKm),
     coffeeIdx: index('idx_coffee').on(table.coffeeCount),
+    ownerIdx: index('idx_owner').on(table.ownerHash),
   })
 );
 
@@ -44,10 +47,12 @@ export const jawirCoffeeVotes = mysqlTable(
   {
     tagId: varchar('tag_id', { length: 36 }).notNull(),
     deviceHash: varchar('device_hash', { length: 64 }).notNull(),
+    ipHash: varchar('ip_hash', { length: 64 }), // for the per-IP hourly limit; NULL on older votes
     createdAt: timestamp('created_at').defaultNow().notNull(),
   },
   (table) => ({
     pk: primaryKey({ columns: [table.tagId, table.deviceHash] }),
+    ipIdx: index('idx_vote_ip').on(table.ipHash, table.createdAt),
   })
 );
 

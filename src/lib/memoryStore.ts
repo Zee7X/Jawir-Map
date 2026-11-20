@@ -15,12 +15,17 @@ export interface JawirTagItem {
   createdAt: string;
   deviceHash?: string;
   ipHash?: string;
+  ownerHash?: string | null;
 }
+
+// What the API may send to browsers: never the device, IP or owner hashes.
+export type PublicTag = Omit<JawirTagItem, 'deviceHash' | 'ipHash' | 'ownerHash'>;
 
 // Shared across route bundles; globalThis keeps one copy per server process.
 const g = globalThis as unknown as {
   __jawirMemoryStore?: JawirTagItem[];
   __jawirCoffeeVotes?: Set<string>;
+  __jawirCoffeeLog?: { ipHash: string; at: number }[];
 };
 
 export const memoryStore: JawirTagItem[] = (g.__jawirMemoryStore ??= [
@@ -133,3 +138,6 @@ export const memoryStore: JawirTagItem[] = (g.__jawirMemoryStore ??= [
 
 // Keys are `${tagId}:${deviceHash}`.
 export const memoryCoffeeVotes: Set<string> = (g.__jawirCoffeeVotes ??= new Set<string>());
+
+// Vote times per IP hash, for the hourly coffee limit.
+export const memoryCoffeeLog: { ipHash: string; at: number }[] = (g.__jawirCoffeeLog ??= []);

@@ -1,131 +1,54 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db, rawClient, isDbConfigured, ensureTable } from '@/db';
 import { jawirTags } from '@/db/schema';
-import { and, eq, desc, count, sql } from 'drizzle-orm';
+import { and, eq, count, sql } from 'drizzle-orm';
 import {
   fuzzCoordinate,
   calculateDistanceFromLawu,
   detectRegionStatus,
   TagCategory,
   TrahType,
-  RegionStatusType,
 } from '@/lib/geo';
-import { memoryStore, type JawirTagItem } from '@/lib/memoryStore';
+import { memoryStore, type JawirTagItem, type PublicTag } from '@/lib/memoryStore';
 import { hashString } from '@/lib/hash';
 import { isDuplicateOnKey } from '@/lib/dbErrors';
 import { isCleanText } from '@/lib/filter';
+import { listPublicTags, findTagByOwner, rowToPublic } from '@/lib/tagStore';
+import { getClientIp, newOwnerToken, readOwnerHash, setOwnerCookie, envInt } from '@/lib/request';
 import { randomUUID } from 'crypto';
 
 export type { JawirTagItem };
 
-const MAX_PINS_PER_IP_PER_DAY = 3;
+export const dynamic = 'force-dynamic';
+
+// Mobile carriers put many phones behind one IP (CGNAT), so this guards against scripts, not people.
+const MAX_PINS_PER_IP_PER_DAY = envInt('MAX_PINS_PER_IP_PER_DAY', 10);
 const MAX_NUMBER_RETRIES = 5;
-const DEVICE_LIMIT_MESSAGE = 'Woi, jatahmu mung sepisan salawase urip! Ojo srakah kaya pejabat.';
-const IP_LIMIT_MESSAGE = 'Alon-alon, lur. Siji IP mung oleh nancep 3 pin sedina.';
+const OWN_PIN_MESSAGE = 'Woi, jatahmu mung sepisan salawase urip! Ojo srakah kaya pejabat.';
+const DEVICE_TAKEN_MESSAGE =
+  'Piranti iki wis tau nancep pin. Siji piranti mung oleh siji pin, lur. Yen iki pinmu, bukak saka browser sing biyen.';
+const IP_LIMIT_MESSAGE = `Alon-alon, lur. Siji jaringan mung oleh nancep ${MAX_PINS_PER_IP_PER_DAY} pin sedina.`;
 const VALID_CATEGORIES: TagCategory[] = ['pejuang_rupiah', 'cari_kawan', 'butuh_info', 'eksis'];
 const VALID_TRAHS: TrahType[] = ['mataraman', 'ngapak', 'arekan', 'pantura', 'rantau_lahir', 'simpatisan'];
 
-function deviceLimitResponse(item: typeof jawirTags.$inferSelect) {
-  return NextResponse.json(
-    {
-      success: false,
-      message: DEVICE_LIMIT_MESSAGE,
-      existingTag: {
-        id: item.id,
-        jawirNumber: Number(item.jawirNumber),
-        nickname: item.nickname,
-        statusTag: item.statusTag,
-        category: item.category,
-        trah: item.trah,
-        regionStatus: item.regionStatus,
-        lat: Number(item.lat),
-        lng: Number(item.lng),
-        distanceKm: Number(item.distanceKm),
-        coffeeCount: Number(item.coffeeCount || 0),
-        createdAt: item.createdAt ? new Date(item.createdAt).toISOString() : new Date().toISOString(),
-      },
-    },
-    { status: 409 }
-  );
+// The requester already owns this pin (matched by owner cookie): hand it back so the client can show it.
+function ownPinResponse(tag: PublicTag) {
+  return NextResponse.json({ success: false, message: OWN_PIN_MESSAGE, existingTag: tag }, { status: 409 });
+}
+
+// Another pin shares this device fingerprint. Fingerprints collide (same phone model), so its data stays private.
+function deviceTakenResponse() {
+  return NextResponse.json({ success: false, message: DEVICE_TAKEN_MESSAGE }, { status: 409 });
 }
 
 export async function GET() {
   try {
-    let tags: JawirTagItem[] = [];
-
-    if (isDbConfigured && db) {
-      await ensureTable();
-      const rows = await db
-        .select()
-        .from(jawirTags)
-        .orderBy(desc(jawirTags.createdAt));
-
-      tags = rows.map((r) => ({
-        id: r.id,
-        jawirNumber: Number(r.jawirNumber),
-        nickname: r.nickname,
-        statusTag: r.statusTag,
-        category: r.category as TagCategory,
-        trah: (r.trah as TrahType) || 'mataraman',
-        regionStatus: r.regionStatus as RegionStatusType,
-        lat: Number(r.lat),
-        lng: Number(r.lng),
-        distanceKm: Number(r.distanceKm),
-        coffeeCount: Number(r.coffeeCount || 0),
-        createdAt: r.createdAt ? new Date(r.createdAt).toISOString() : new Date().toISOString(),
-      }));
-    } else {
-      tags = memoryStore.map((item) => ({ ...item }));
-    }
-
-    // Top 5 Farthest
-    const sortedByDistanceDesc = [...tags].sort((a, b) => b.distanceKm - a.distanceKm);
-    const topFarthest = sortedByDistanceDesc.slice(0, 5);
-
-    // Top 5 Closest to Lawu
-    const sortedByDistanceAsc = [...tags].sort((a, b) => a.distanceKm - b.distanceKm);
-    const topClosest = sortedByDistanceAsc.slice(0, 5);
-
-    // Top 5 Most Coffee / Respect
-    const sortedByCoffee = [...tags].sort((a, b) => b.coffeeCount - a.coffeeCount);
-    const topCoffee = sortedByCoffee.slice(0, 5);
-
-    // Region counts
-    const regionStats: Record<RegionStatusType, number> = {
-      kandang: 0,
-      sunda_empire: 0,
-      antarpulau: 0,
-      internasional: 0,
-    };
-    for (const t of tags) {
-      if (regionStats[t.regionStatus] !== undefined) {
-        regionStats[t.regionStatus]++;
-      }
-    }
-
-    // Trah counts
-    const trahStats: Record<string, number> = {};
-    for (const t of tags) {
-      trahStats[t.trah] = (trahStats[t.trah] || 0) + 1;
-    }
-
-    const farthestTag = topFarthest[0] || null;
-    const closestTag = topClosest[0] || null;
-
-    return NextResponse.json({
-      success: true,
-      total: tags.length,
-      farthestTag,
-      closestTag,
-      leaderboard: {
-        topFarthest,
-        topClosest,
-        topCoffee,
-        regionStats,
-        trahStats,
-      },
-      data: tags,
-    });
+    const tags = await listPublicTags();
+    return NextResponse.json(
+      { success: true, total: tags.length, data: tags },
+      // Vercel's CDN serves one copy for 15 s and a stale one while refreshing, so a traffic spike costs one query.
+      { headers: { 'Cache-Control': 'public, max-age=0, s-maxage=15, stale-while-revalidate=60' } }
+    );
   } catch (error) {
     console.error('Error fetching tags:', error);
     return NextResponse.json(
@@ -172,7 +95,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!fingerprintId || typeof fingerprintId !== 'string') {
+    if (!fingerprintId || typeof fingerprintId !== 'string' || fingerprintId.length > 128) {
       return NextResponse.json(
         { success: false, message: 'Pirantimu durung dicap. Refresh terus jajal maneh.' },
         { status: 400 }
@@ -196,22 +119,24 @@ export async function POST(request: NextRequest) {
     }
 
     const deviceHash = hashString(fingerprintId.trim());
+    const ipHash = hashString(getClientIp(request));
 
-    const forwardedFor = request.headers.get('x-forwarded-for');
-    const realIp = request.headers.get('x-real-ip');
-    const clientIp = (forwardedFor ? forwardedFor.split(',')[0].trim() : realIp) || '127.0.0.1';
-    const ipHash = hashString(clientIp);
+    // The owner cookie is the reliable identity: it survives browser updates that change the fingerprint.
+    const currentOwnerHash = readOwnerHash(request);
+    if (currentOwnerHash) {
+      const mine = await findTagByOwner(currentOwnerHash);
+      if (mine) return ownPinResponse(mine);
+    }
 
     if (isDbConfigured && db) {
       await ensureTable();
 
       const existing = await db
-        .select()
+        .select({ id: jawirTags.id })
         .from(jawirTags)
         .where(eq(jawirTags.deviceHash, deviceHash))
         .limit(1);
-
-      if (existing.length > 0) return deviceLimitResponse(existing[0]);
+      if (existing.length > 0) return deviceTakenResponse();
 
       const [recent] = await db
         .select({ val: count() })
@@ -221,30 +146,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ success: false, message: IP_LIMIT_MESSAGE }, { status: 429 });
       }
     } else {
-      const existing = memoryStore.find((item) => item.deviceHash === deviceHash);
-      if (existing) {
-        return NextResponse.json(
-          {
-            success: false,
-            message: 'Woi, jatahmu mung sepisan salawase urip! Ojo srakah kaya pejabat.',
-            existingTag: {
-              id: existing.id,
-              jawirNumber: existing.jawirNumber,
-              nickname: existing.nickname,
-              statusTag: existing.statusTag,
-              category: existing.category,
-              trah: existing.trah,
-              regionStatus: existing.regionStatus,
-              lat: existing.lat,
-              lng: existing.lng,
-              distanceKm: existing.distanceKm,
-              coffeeCount: existing.coffeeCount,
-              createdAt: existing.createdAt,
-            },
-          },
-          { status: 409 }
-        );
-      }
+      if (memoryStore.some((item) => item.deviceHash === deviceHash)) return deviceTakenResponse();
 
       const since = Date.now() - 24 * 60 * 60 * 1000;
       const recent = memoryStore.filter(
@@ -261,6 +163,8 @@ export async function POST(request: NextRequest) {
     const regionStatus = detectRegionStatus(fuzzedLat, fuzzedLng);
     const id = randomUUID();
     const nowIso = new Date().toISOString();
+    const ownerToken = newOwnerToken();
+    const ownerHash = hashString(ownerToken);
 
     let assignedJawirNumber = 1;
 
@@ -271,8 +175,8 @@ export async function POST(request: NextRequest) {
         try {
           await rawClient!.execute(
             `INSERT INTO jawir_tags
-               (id, nickname, status_tag, category, trah, region_status, lat, lng, distance_km, coffee_count, device_hash, ip_hash, jawir_number)
-             SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, COALESCE(MAX(jawir_number), 0) + 1 FROM jawir_tags`,
+               (id, nickname, status_tag, category, trah, region_status, lat, lng, distance_km, coffee_count, device_hash, ip_hash, owner_hash, jawir_number)
+             SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, COALESCE(MAX(jawir_number), 0) + 1 FROM jawir_tags`,
             [
               id,
               nickname.trim(),
@@ -285,27 +189,27 @@ export async function POST(request: NextRequest) {
               distanceKm,
               deviceHash,
               ipHash,
+              ownerHash,
             ]
           );
           assigned = true;
         } catch (err) {
-          if (isDuplicateOnKey(err, 'idx_unique_device')) {
-            const [dup] = await db.select().from(jawirTags).where(eq(jawirTags.deviceHash, deviceHash)).limit(1);
-            if (dup) return deviceLimitResponse(dup);
-          }
+          // A concurrent request from the same device won the race.
+          if (isDuplicateOnKey(err, 'idx_unique_device')) return deviceTakenResponse();
           if (!isDuplicateOnKey(err, 'idx_jawir_number')) throw err;
         }
       }
       if (!assigned) throw new Error('Gagal dapat nomor Jawir setelah beberapa percobaan');
 
-      const [inserted] = await db
-        .select({ jawirNumber: jawirTags.jawirNumber })
-        .from(jawirTags)
-        .where(eq(jawirTags.id, id))
-        .limit(1);
+      const [inserted] = await db.select().from(jawirTags).where(eq(jawirTags.id, id)).limit(1);
       assignedJawirNumber = Number(inserted?.jawirNumber);
+      if (inserted) {
+        const response = NextResponse.json({ success: true, data: rowToPublic(inserted) }, { status: 201 });
+        setOwnerCookie(response, ownerToken);
+        return response;
+      }
     } else {
-      assignedJawirNumber = memoryStore.length + 1;
+      assignedJawirNumber = memoryStore.reduce((max, t) => Math.max(max, t.jawirNumber), 0) + 1;
       memoryStore.unshift({
         id,
         jawirNumber: assignedJawirNumber,
@@ -321,10 +225,11 @@ export async function POST(request: NextRequest) {
         createdAt: nowIso,
         deviceHash,
         ipHash,
+        ownerHash,
       });
     }
 
-    const newTagItem: JawirTagItem = {
+    const newTagItem: PublicTag = {
       id,
       jawirNumber: assignedJawirNumber,
       nickname: nickname.trim(),
@@ -339,13 +244,9 @@ export async function POST(request: NextRequest) {
       createdAt: nowIso,
     };
 
-    return NextResponse.json(
-      {
-        success: true,
-        data: newTagItem,
-      },
-      { status: 201 }
-    );
+    const response = NextResponse.json({ success: true, data: newTagItem }, { status: 201 });
+    setOwnerCookie(response, ownerToken);
+    return response;
   } catch (error) {
     console.error('Error inserting jawir tag:', error);
     return NextResponse.json(
